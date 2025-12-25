@@ -64,6 +64,11 @@ AddressInformation::getNumOfDataAccessesIn<llvm::Triple::ArchType::arm>(
   case ARM::UMAAL://##
   case ARM::UMLAL://##
   case ARM::UXTB16://##
+  case ARM::SXTAH://##
+  case ARM::LDREXD://##
+  case ARM::STREXD://##
+  case ARM::LDRD://##
+  case ARM::VFMAD://##
   case ARM::BR_JTm_rs:  // Jump table, will load from jumptable
   case ARM::BR_JTm_i12: // Jump table, will load from jumptable
   case ARM::LDRi12:

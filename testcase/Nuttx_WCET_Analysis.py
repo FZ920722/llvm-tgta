@@ -22,9 +22,12 @@ def IRCompile(_param):
         # (1) 指令分析
         _temp_target, _, _, _temp_compiler = _source_compiler.split('-')
         # -marm -march=armv4t -mfloat-abi=hard
+        # "-mcpu=cortex-a7",
+        # "-mfloat-abi=hard",
+        # "-mfpu=neon-vfpv4",
         _temp_sl = [f"--target={_temp_target}", "-w", "-S", "-emit-llvm", "-gline-tables-only", "-O0", "-Xclang", \
                     "-disable-O0-optnone", "-fno-builtin", "-fno-jump-tables", "-fno-optimize-sibling-calls"] + \
-                [_ditem for _ditem in _dd['arguments'][1:] if not _ditem.startswith(('-g', '-O'))]
+                [_ditem for _ditem in _dd['arguments'][1:] if not _ditem.startswith(('-g', '-O', '-fvisibility=', '-mlong-calls', ))]
         _temp_sl[-2] = os.path.join(IRFILE_PATH, f"{_sfname}.ll")
         if _temp_compiler == 'gcc':
             _temp_sl = ['clang'] + _temp_sl
@@ -89,14 +92,13 @@ if __name__ == "__main__":
     parser.add_argument('-e', '--entrys',   type=str,   help='The entry points list file path')
     parser.add_argument('-p', '--platform',   type=str,   help='The compile target of platform')
 
-
     # commands file. such as compile_commands.json
     # The source address. such as nuttx project
-    # qemu-armv7a:nsh
-    # qemu-armv8a:nsh
-    # qemu-armv7r:nsh
     # fvp-armv8r:nsh
-
+    # qemu-armv8a:nsh
+    # qemu-armv7a:nsh
+    # qemu-armv7r:nsh
+    # fvp-armv8r-aarch32:nsh
     # 1_Command_Compile
     # 利用bear生成command_compile.json
     args = parser.parse_args()

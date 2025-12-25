@@ -13,7 +13,8 @@
             "args":[
                 "-s", "/home/fyj/DiskN/work-space",
                 "-n", "/home/fyj/DiskN/nuttxspace/nuttx",
-                "-p", "qemu-armv7a:nsh"
+                //"-e", "/home/fyj/DiskN/nuttxspace/nuttx",
+                "-p", "fvp-armv8r-aarch32:nsh"
             ]
         }
     ]

@@ -326,6 +326,11 @@ void AsmDumpAndCheckPass::checkInstruction<llvm::Triple::ArchType::arm>(
   case ARM::UMAAL://##
   case ARM::UMLAL://##
   case ARM::UXTB16://##
+  case ARM::SXTAH://##
+  case ARM::LDREXD://##
+  case ARM::STREXD://##
+  case ARM::LDRD://##
+  case ARM::VFMAD://##
   case ARM::BX_CALL:
   	break;
   case ARM::MOVr: // Move register to register
@@ -531,7 +536,6 @@ void AsmDumpAndCheckPass::checkInstruction<llvm::Triple::ArchType::arm>(
   case ARM::SMMLA:
   case ARM::SMLABB:
   case ARM::UBFX: // Bit field extract and zero extend
-  
 
   case ARM::VMOVSR:
   case ARM::VMOVRS:

@@ -72,8 +72,8 @@ bool StaticAddressProvider::runOnMachineFunction(MachineFunction &F) {
   }
 
   // std::string name = F.getName().str();//##
-  errs() << "Function name: " << F.getName().str() << "\n";//##
-
+  // errs() << "Function name: " << F.getName().str() << "\n";//##
+  // SXTAH
   // Run on basic blocks individually
   bool Changed = false;
   for (MachineFunction::iterator FI = F.begin(); FI != F.end(); ++FI)
@@ -139,6 +139,7 @@ bool StaticAddressProvider::runOnMachineBasicBlock(MachineBasicBlock &MBB) {
         case ARM::LDRSB_POST://##
         case ARM::REV://##
         case ARM::REV16://##
+        case ARM::SXTAH://##
         case ARM::STREX://##
         case ARM::STRi12://##
         case ARM::STRB_POST_REG://##
@@ -161,6 +162,10 @@ bool StaticAddressProvider::runOnMachineBasicBlock(MachineBasicBlock &MBB) {
         case ARM::SMULL://##
         case ARM::UMAAL://##
         case ARM::UMLAL://##
+        case ARM::LDREXD://##
+        case ARM::STREXD://##
+        case ARM::LDRD://##
+        case ARM::VFMAD://##
         case ARM::SMLALv5:
         case ARM::MULv5:
         case ARM::SMULLv5:
