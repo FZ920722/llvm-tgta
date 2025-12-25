@@ -1,0 +1,20 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Python Debugger: Nuttx_WCET_Analysis",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/home/fyj/DiskN/llvm-project/llvm/tools/llvm-tgta/testcase/Nuttx_WCET_Analysis.py",
+            "console": "integratedTerminal",
+            "args":[
+                "-s", "/home/fyj/DiskN/work-space",
+                "-n", "/home/fyj/DiskN/nuttxspace/nuttx",
+                "-p", "qemu-armv7a:nsh"
+            ]
+        }
+    ]
+}

@@ -30,7 +30,7 @@ sudo tar xfz gurobi9.5.2_linux64.tar.gz
 
 sudo rm -rf gurobi9.5.2_linux64.tar.gz
 
-sudo ln -s gurobi952/linux64/lib/libgurobi95.so /usr/lib/libgurobi.so 
+sudo ln -s gurobi952/linux64/lib/libgurobi95.so /usr/lib/libgurobi.so
 ```
 
 
@@ -38,7 +38,7 @@ sudo ln -s gurobi952/linux64/lib/libgurobi95.so /usr/lib/libgurobi.so
 ```sh
 git clone https://github.com/llvm/llvm-project.git -b llvmorg-14.0.6
 cd llvm-project
-git clone https://github.com/TG-RT-System/llvm-tgta.git llvm/tools/llvm-tgta
+git clone https://github.com/FZ920722/llvm-tgta.git llvm/tools/llvm-tgta
 cd llvm
 patch -p1 < tools/llvm-tgta/patches/llvm-14.0.6.llvmta.diff
 ```
