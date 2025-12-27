@@ -12,60 +12,65 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "llvm/ADT/Triple.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/ScopeExit.h"
-#include "llvm/ADT/Triple.h"
-#include "llvm/Analysis/TargetLibraryInfo.h"
-#include "llvm/CodeGen/CommandFlags.h"
-#include "llvm/CodeGen/LinkAllAsmWriterComponents.h"
-#include "llvm/CodeGen/LinkAllCodegenComponents.h"
-#include "llvm/CodeGen/MIRParser/MIRParser.h"
-#include "llvm/CodeGen/MachineFunctionPass.h"
-#include "llvm/CodeGen/MachineModuleInfo.h"
-#include "llvm/CodeGen/TargetPassConfig.h"
-#include "llvm/CodeGen/TargetSubtargetInfo.h"
-#include "llvm/IR/AutoUpgrade.h"
-#include "llvm/IR/DataLayout.h"
-#include "llvm/IR/DiagnosticInfo.h"
-#include "llvm/IR/DiagnosticPrinter.h"
-#include "llvm/IR/IRPrintingPasses.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/LLVMRemarkStreamer.h"
-#include "llvm/IR/LegacyPassManager.h"
+
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
-#include "llvm/IRReader/IRReader.h"
-#include "llvm/InitializePasses.h"
-#include "llvm/MC/SubtargetFeature.h"
+#include "llvm/IR/DataLayout.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/AutoUpgrade.h"
+#include "llvm/IR/DiagnosticInfo.h"
+#include "llvm/IR/IRPrintingPasses.h"
+#include "llvm/IR/DiagnosticPrinter.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/LLVMRemarkStreamer.h"
+
+#include "llvm/CodeGen/CommandFlags.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
+#include "llvm/CodeGen/MachineModuleInfo.h"
+#include "llvm/CodeGen/MIRParser/MIRParser.h"
+#include "llvm/CodeGen/MachineFunctionPass.h"
+#include "llvm/CodeGen/TargetSubtargetInfo.h"
+#include "llvm/CodeGen/LinkAllCodegenComponents.h"
+#include "llvm/CodeGen/LinkAllAsmWriterComponents.h"
+
 #include "llvm/MC/TargetRegistry.h"
-#include "llvm/Pass.h"
-#include "llvm/Remarks/HotnessThresholdParser.h"
-#include "llvm/Support/CommandLine.h"
-#include "llvm/Support/Debug.h"
-#include "llvm/Support/FileSystem.h"
-#include "llvm/Support/FormattedStream.h"
+#include "llvm/MC/SubtargetFeature.h"
+
 #include "llvm/Support/Host.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Support/InitLLVM.h"
-#include "llvm/Support/ManagedStatic.h"
-#include "llvm/Support/PluginLoader.h"
+#include "llvm/Support/WithColor.h"
 #include "llvm/Support/SourceMgr.h"
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/CommandLine.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Support/TimeProfiler.h"
+#include "llvm/Support/PluginLoader.h"
+#include "llvm/Support/ManagedStatic.h"
 #include "llvm/Support/ToolOutputFile.h"
-#include "llvm/Support/WithColor.h"
-#include "llvm/Target/TargetLoweringObjectFile.h"
-#include "llvm/Target/TargetMachine.h"
-#include "llvm/Transforms/Utils/Cloning.h"
-#include <memory>
+#include "llvm/Support/FormattedStream.h"
 
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetLoweringObjectFile.h"
+
+#include <memory>
+#include "llvm/Pass.h"
+#include "llvm/InitializePasses.h"
+#include "llvm/IRReader/IRReader.h"
+#include "llvm/Transforms/Utils/Cloning.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
+#include "llvm/Remarks/HotnessThresholdParser.h"
 // #include "Memory/CompositionalAbstractCache.h"
-// #include "Util/Options.h"
-// #include "Util/SharedStorage.h"
+
 // MODIFICATION: include headers needed to trigger timing analysis
 #include "LLVMPasses/MachineFunctionCollector.h"
 #include "LLVMPasses/TimingAnalysisPasses.h"
 // END MODIFICATION
 #include "Util/Options.h"
+// #include "Util/SharedStorage.h"
 using namespace llvm;
 
 // TimingAnalysisPass::util::_SharedStorage<
@@ -81,144 +86,147 @@ static codegen::RegisterCodeGenFlags CGF;
 // within the corresponding llc passes, and target-specific options
 // and back-end code generation options are specified with the target machine.
 //
-static cl::opt<std::string>
-    InputFilename(cl::Positional, cl::desc("<input bitcode>"), cl::init("-"));
+static cl::opt<std::string> InputFilename(
+  cl::Positional,
+  cl::init("-"),
+  cl::desc("<input bitcode>"));
 
-static cl::opt<std::string>
-    InputLanguage("x", cl::desc("Input language ('ir' or 'mir')"));
+static cl::opt<std::string> InputLanguage(
+  "x",
+  cl::desc("Input language ('ir' or 'mir')"));
 
-static cl::opt<std::string> OutputFilename("o", cl::desc("Output filename"),
-                                           cl::value_desc("filename"));
+static cl::opt<std::string> OutputFilename(
+  "o",
+  cl::desc("Output filename"),
+  cl::value_desc("filename"));
 
-static cl::opt<std::string>
-    SplitDwarfOutputFile("split-dwarf-output", cl::desc(".dwo output filename"),
-                         cl::value_desc("filename"));
+static cl::opt<std::string> SplitDwarfOutputFile(
+  "split-dwarf-output",
+  cl::desc(".dwo output filename"),
+  cl::value_desc("filename"));
 
-static cl::opt<unsigned>
-    TimeCompilations("time-compilations", cl::Hidden, cl::init(1u),
-                     cl::value_desc("N"),
-                     cl::desc("Repeat compilation N times for timing"));
+static cl::opt<unsigned> TimeCompilations(
+  "time-compilations", cl::Hidden,
+  cl::init(1u),
+  cl::value_desc("N"),
+  cl::desc("Repeat compilation N times for timing"));
 
-static cl::opt<bool> TimeTrace("time-trace", cl::desc("Record time trace"));
+static cl::opt<bool> TimeTrace(
+  "time-trace",
+  cl::desc("Record time trace"));
 
 static cl::opt<unsigned> TimeTraceGranularity(
-    "time-trace-granularity",
-    cl::desc(
-        "Minimum time granularity (in microseconds) traced by time profiler"),
-    cl::init(500), cl::Hidden);
+  "time-trace-granularity", cl::Hidden,
+  cl::init(500),
+  cl::desc("Minimum time granularity (in microseconds) traced by time profiler"));
 
-static cl::opt<std::string>
-    TimeTraceFile("time-trace-file",
-                  cl::desc("Specify time trace file destination"),
-                  cl::value_desc("filename"));
+static cl::opt<std::string> TimeTraceFile(
+  "time-trace-file",
+  cl::desc("Specify time trace file destination"),
+  cl::value_desc("filename"));
 
-static cl::opt<std::string>
-    BinutilsVersion("binutils-version", cl::Hidden,
-                    cl::desc("Produced object files can use all ELF features "
-                             "supported by this binutils version and newer."
-                             "If -no-integrated-as is specified, the generated "
-                             "assembly will consider GNU as support."
-                             "'none' means that all ELF features can be used, "
-                             "regardless of binutils support"));
+static cl::opt<std::string> BinutilsVersion(
+  "binutils-version", cl::Hidden,
+  cl::desc("Produced object files can use all ELF features supported by this binutils version and newer. If -no-integrated-as is specified, the generated assembly will consider GNU as support. 'none' means that all ELF features can be used, regardless of binutils support"));
 
-static cl::opt<bool>
-    NoIntegratedAssembler("no-integrated-as", cl::Hidden,
-                          cl::desc("Disable integrated assembler"));
+static cl::opt<bool> NoIntegratedAssembler(
+  "no-integrated-as", cl::Hidden,
+  cl::desc("Disable integrated assembler"));
 
-static cl::opt<bool>
-    PreserveComments("preserve-as-comments", cl::Hidden,
-                     cl::desc("Preserve Comments in outputted assembly"),
-                     cl::init(true));
+static cl::opt<bool> PreserveComments(
+  "preserve-as-comments", cl::Hidden,
+  cl::init(true),
+  cl::desc("Preserve Comments in outputted assembly"));
 
 // Determine optimization level.
-static cl::opt<char>
-    OptLevel("O",
-             cl::desc("Optimization level. [-O0, -O1, -O2, or -O3] "
-                      "(default = '-O2')"),
-             cl::Prefix, cl::ZeroOrMore, cl::init(' '));
+static cl::opt<char> OptLevel(
+  "O", cl::Prefix, cl::ZeroOrMore,
+  cl::init(' '),
+  cl::desc("Optimization level. [-O0, -O1, -O2, or -O3] (default = '-O2')"));
 
-static cl::opt<std::string>
-    TargetTriple("mtriple", cl::desc("Override target triple for module"));
+static cl::opt<std::string> TargetTriple(
+  "mtriple",
+  cl::desc("Override target triple for module"));
 
 static cl::opt<std::string> SplitDwarfFile(
-    "split-dwarf-file",
-    cl::desc(
-        "Specify the name of the .dwo file to encode in the DWARF output"));
+  "split-dwarf-file",
+  cl::desc("Specify the name of the .dwo file to encode in the DWARF output"));
 
-static cl::opt<bool> NoVerify("disable-verify", cl::Hidden,
-                              cl::desc("Do not verify input module"));
+static cl::opt<bool> NoVerify(
+  "disable-verify", cl::Hidden,
+  cl::desc("Do not verify input module"));
 
-static cl::opt<bool>
-    DisableSimplifyLibCalls("disable-simplify-libcalls",
-                            cl::desc("Disable simplify-libcalls"));
+static cl::opt<bool> DisableSimplifyLibCalls(
+  "disable-simplify-libcalls",
+  cl::desc("Disable simplify-libcalls"));
 
-static cl::opt<bool> ShowMCEncoding("show-mc-encoding", cl::Hidden,
-                                    cl::desc("Show encoding in .s output"));
+static cl::opt<bool> ShowMCEncoding(
+  "show-mc-encoding", cl::Hidden,
+  cl::desc("Show encoding in .s output"));
 
-static cl::opt<bool>
-    DwarfDirectory("dwarf-directory", cl::Hidden,
-                   cl::desc("Use .file directives with an explicit directory"),
-                   cl::init(true));
+static cl::opt<bool> DwarfDirectory(
+  "dwarf-directory", cl::Hidden,
+  cl::init(true),
+  cl::desc("Use .file directives with an explicit directory"));
 
-static cl::opt<bool> AsmVerbose("asm-verbose",
-                                cl::desc("Add comments to directives."),
-                                cl::init(true));
+static cl::opt<bool> AsmVerbose(
+  "asm-verbose",
+  cl::init(true),
+  cl::desc("Add comments to directives."));
 
-static cl::opt<bool>
-    CompileTwice("compile-twice", cl::Hidden,
-                 cl::desc("Run everything twice, re-using the same pass "
-                          "manager and verify the result is the same."),
-                 cl::init(false));
+static cl::opt<bool> CompileTwice(
+  "compile-twice", cl::Hidden,
+  cl::init(false),
+  cl::desc("Run everything twice, re-using the same pass manager and verify the result is the same."));
 
 static cl::opt<bool> DiscardValueNames(
-    "discard-value-names",
-    cl::desc("Discard names from Value (other than GlobalValue)."),
-    cl::init(false), cl::Hidden);
+  "discard-value-names", cl::Hidden,
+  cl::init(false),
+  cl::desc("Discard names from Value (other than GlobalValue)."));
 
-static cl::list<std::string> IncludeDirs("I", cl::desc("include search path"));
+static cl::list<std::string> IncludeDirs(
+  "I",
+  cl::desc("include search path"));
 
 static cl::opt<bool> RemarksWithHotness(
-    "pass-remarks-with-hotness",
-    cl::desc("With PGO, include profile count in optimization remarks"),
-    cl::Hidden);
+  "pass-remarks-with-hotness", cl::Hidden,
+  cl::desc("With PGO, include profile count in optimization remarks"));
 
-static cl::opt<Optional<uint64_t>, false, remarks::HotnessThresholdParser>
-    RemarksHotnessThreshold(
-        "pass-remarks-hotness-threshold",
-        cl::desc("Minimum profile count required for "
-                 "an optimization remark to be output. "
-                 "Use 'auto' to apply the threshold from profile summary."),
-        cl::value_desc("N or 'auto'"), cl::init(0), cl::Hidden);
+static cl::opt<Optional<uint64_t>, false, remarks::HotnessThresholdParser> RemarksHotnessThreshold(
+  "pass-remarks-hotness-threshold", cl::Hidden,
+  cl::init(0),
+  cl::desc("Minimum profile count required for an optimization remark to be output. Use 'auto' to apply the threshold from profile summary."),
+  cl::value_desc("N or 'auto'"));
 
-static cl::opt<std::string>
-    RemarksFilename("pass-remarks-output",
-                    cl::desc("Output filename for pass remarks"),
-                    cl::value_desc("filename"));
+static cl::opt<std::string> RemarksFilename(
+  "pass-remarks-output",
+  cl::desc("Output filename for pass remarks"),
+  cl::value_desc("filename"));
 
-static cl::opt<std::string>
-    RemarksPasses("pass-remarks-filter",
-                  cl::desc("Only record optimization remarks from passes whose "
-                           "names match the given regular expression"),
-                  cl::value_desc("regex"));
+static cl::opt<std::string> RemarksPasses(
+  "pass-remarks-filter",
+  cl::desc("Only record optimization remarks from passes whose names match the given regular expression"),
+  cl::value_desc("regex"));
 
 static cl::opt<std::string> RemarksFormat(
-    "pass-remarks-format",
-    cl::desc("The format used for serializing remarks (default: YAML)"),
-    cl::value_desc("format"), cl::init("yaml"));
+  "pass-remarks-format",
+  cl::init("yaml"),
+  cl::desc("The format used for serializing remarks (default: YAML)"),
+  cl::value_desc("format"));
 
 namespace {
-static ManagedStatic<std::vector<std::string>> RunPassNames;
+  static ManagedStatic<std::vector<std::string>> RunPassNames;
 
-struct RunPassOption {
-  void operator=(const std::string &Val) const {
-    if (Val.empty())
-      return;
-    SmallVector<StringRef, 8> PassNames;
-    StringRef(Val).split(PassNames, ',', -1, false);
-    for (auto PassName : PassNames)
-      RunPassNames->push_back(std::string(PassName));
-  }
-};
+  struct RunPassOption {
+    void operator=(const std::string &Val) const {
+      if (Val.empty())
+        return;
+      SmallVector<StringRef, 8> PassNames;
+      StringRef(Val).split(PassNames, ',', -1, false);
+      for (auto PassName : PassNames)
+        RunPassNames->push_back(std::string(PassName));
+    }
+  };
 } // namespace
 
 static RunPassOption RunPassOpt;
@@ -351,7 +359,6 @@ struct LLCDiagnosticHandler : public DiagnosticHandler {
 };
 
 // main - Entry point for the llc compiler.
-//
 int main(int argc, char **argv) {
   InitLLVM X(argc, argv);
 
@@ -364,8 +371,7 @@ int main(int argc, char **argv) {
   InitializeAllAsmPrinters();
   InitializeAllAsmParsers();
 
-  // Initialize codegen and IR passes used by llc so that the -print-after,
-  // -print-before, and -stop-after options work.
+  // Initialize codegen and IR passes used by llc so that the -print-after, -print-before, and -stop-after options work.
   PassRegistry *Registry = PassRegistry::getPassRegistry();
   initializeCore(*Registry);
   initializeCodeGen(*Registry);

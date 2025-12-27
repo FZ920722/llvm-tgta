@@ -8,13 +8,13 @@
             "name": "Python Debugger: Nuttx_WCET_Analysis",
             "type": "debugpy",
             "request": "launch",
-            "program": "/home/fyj/DiskN/llvm-project/llvm/tools/llvm-tgta/testcase/Nuttx_WCET_Analysis.py",
+            "program": "~/llvm-project-llvmorg-14.0.6/llvm/tools/llvm-tgta/testcase/Nuttx_WCET_Analysis.py",
             "console": "integratedTerminal",
             "args":[
-                "-s", "/home/fyj/DiskN/work-space",
-                "-n", "/home/fyj/DiskN/nuttxspace/nuttx",
+                "-s", "~/work-space",
+                "-n", "~/nuttxspace/nuttx",
                 //"-e", "/home/fyj/DiskN/nuttxspace/nuttx",
-                "-p", "fvp-armv8r-aarch32:nsh"
+                "-p", "qemu-armv7a:nsh"
             ]
         }
     ]
