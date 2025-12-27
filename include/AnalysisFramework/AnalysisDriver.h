@@ -190,10 +190,8 @@ private:
    * Is used for the context-aware iteration. Puts basicblocks+contexts into
    * worklist if necessary.
    */
-  bool analyseInstruction(const MachineInstr *currentInstr,
-                          PartitionedAnalysisDom &newOut);
-  void analyseInstruction(const MachineInstr *currentInstr, Context &ctx,
-                          AnalysisDom &newOut);
+  bool analyseInstruction(const MachineInstr *currentInstr, PartitionedAnalysisDom &newOut);
+  void analyseInstruction(const MachineInstr *currentInstr, Context &ctx, AnalysisDom &newOut);
   /**
    * Handles brnaching if necessary. This involve executing guard functions;
    * and pushing analysis information at the right places.
@@ -207,10 +205,8 @@ private:
    * Is used for the context-aware iteration. Puts basicblocks+contexts into
    * worklist if necessary.
    */
-  bool handleBranchInstruction(const MachineInstr *branchInstr,
-                               PartitionedAnalysisDom &newOut);
-  void handleBranchInstruction(const MachineInstr *branchInstr, Context &ctx,
-                               AnalysisDom &newOut);
+  bool handleBranchInstruction(const MachineInstr *branchInstr, PartitionedAnalysisDom &newOut);
+  void handleBranchInstruction(const MachineInstr *branchInstr, Context &ctx, AnalysisDom &newOut);
 
   /**
    * Returns the AnaInfo object containing the information this analysis has
@@ -242,29 +238,21 @@ AnalysisDriverInstr<AnalysisDom>::runAnalysis() {
     if (bbCtxs.second.empty()) {
       worklist.erase(currentBB);
     }
-    DEBUG_WITH_TYPE("driver", std::cerr
-                                  << "Work on BB" << currentBB->getNumber()
-                                  << " of function "
-                                  << currentBB->getParent()->getName().str()
-                                  << " in context " << currentCtx << "\n");
+    DEBUG_WITH_TYPE("driver", std::cerr << "Work on BB" << currentBB->getNumber() << " of function " << currentBB->getParent()->getName().str() << " in context " << currentCtx << "\n");
 
     // Compute new incoming information
     // For function entry blocks, we have information available in func2anainfo
     if (currentBB->getNumber() == 0) { //第一个基本块
-      assert(currentBB->pred_empty() &&
-             "Function entry block cannot have predecessors");
+      assert(currentBB->pred_empty() && "Function entry block cannot have predecessors");
       const auto *currentFunc = currentBB->getParent();
       auto toklist = currentCtx.getTokenList();
       // Assert that the topmost token in context at beginning of function is
       // funcallee of this function
-      assert(!currentCtx.isEmpty() &&
-             toklist.back()->getType() == PartitionTokenType::FUNCALLEE);
-      assert(dynamic_cast<PartitionTokenFunCallee *>(toklist.back())
-                 ->getCallee() == currentFunc);
+      assert(!currentCtx.isEmpty() && toklist.back()->getType() == PartitionTokenType::FUNCALLEE);
+      assert(dynamic_cast<PartitionTokenFunCallee *>(toklist.back()) ->getCallee() == currentFunc);
       toklist.pop_back();
       Context preCallCtx(toklist);
-      AnalysisDom newIn(
-          func2anainfo->at(currentFunc).in.findAnalysisInfo(preCallCtx));
+      AnalysisDom newIn(func2anainfo->at(currentFunc).in.findAnalysisInfo(preCallCtx));
       // Join (potentially new) incoming information for current basic block and
       // context
       mbb2anainfo->at(currentBB).addContext(currentCtx, newIn);
@@ -389,14 +377,16 @@ void AnalysisDriverInstr<AnalysisDom>::analyseInstruction(
   if (!currentInstr->isCall()) {
     // Abstract transfer function
     newOut.transfer(currentInstr, &ctx, this->analysisResults);
-  } else {
+  }
+  else {
     auto &cg = CallGraph::getGraph();
 
     AnalysisDom preCallInfo(newOut);
     // Unreachable calls
     if (preCallInfo.isBottom()) {
       newOut = AnalysisDom(AnaDomInit::BOTTOM);
-    } else if (cg.callsExternal(currentInstr)) {
+    }
+    else if (cg.callsExternal(currentInstr)) {
       // The out out-information from external callee is top
       AnalysisDom calleeout(AnaDomInit::TOP);
       // Do a transfer call with external function.
@@ -405,7 +395,8 @@ void AnalysisDriverInstr<AnalysisDom>::analyseInstruction(
       newOut = afterCallInfo;
       // No need to propagate information to beginning of external function
       // No need to add something to the worklist
-    } else { // Only analyzable calls
+    }
+    else { // Only analyzable calls
       // Set current analysis information to bottom
       newOut = AnalysisDom(AnaDomInit::BOTTOM);
       // Reduce context for call

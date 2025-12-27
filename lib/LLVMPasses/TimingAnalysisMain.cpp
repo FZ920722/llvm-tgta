@@ -201,11 +201,13 @@ bool TimingAnalysisMain::doFinalization(Module &M) {
         auto Arch = getTargetMachine().getTargetTriple().getArch();
         std::tuple<> NoDep;
         if (Arch == Triple::ArchType::arm) {
-          AnalysisDriverInstr<ConstantValueDomain<Triple::ArchType::arm>>
-              ConstValAna(entry, NoDep);
+          // (1)
+          AnalysisDriverInstr<ConstantValueDomain<Triple::ArchType::arm>> ConstValAna(entry, NoDep);
+          // (2)
           auto CvAnaInfo = ConstValAna.runAnalysis();
-          AddressInformationImpl<ConstantValueDomain<Triple::ArchType::arm>>
-              AddrInfo(*CvAnaInfo);
+          // (3) AddrInfo
+          AddressInformationImpl<ConstantValueDomain<Triple::ArchType::arm>> AddrInfo(*CvAnaInfo);
+
           ofstream Myfile;
           if (!QuietMode) {
             Myfile.open("AddressInformation.txt", ios_base::trunc);
@@ -214,51 +216,43 @@ bool TimingAnalysisMain::doFinalization(Module &M) {
           }
 
           functiontofs.emplace(entry, std::set<functionaddr *>());
-
+          // (4) CallGraph
           CallGraph &cg = CallGraph::getGraph();
-          for (auto *currFunc :
-               machineFunctionCollector->getAllMachineFunctions()) {
+          for (auto *currFunc : machineFunctionCollector->getAllMachineFunctions()) {
             string funcName = currFunc->getName().str();
             if (!cg.reachableFromEntryPoint(currFunc)) {
               continue;
             }
             if (getfunctionaddr.find(funcName) == getfunctionaddr.end()) {
+              // (5)  functionaddr(funcName)
               functionaddr *f = new functionaddr(funcName);
               getfunctionaddr[funcName] = f;
             }
             functiontofs[entry].emplace(getfunctionaddr[funcName]);
 
-            for (auto currBB = currFunc->begin(); currBB != currFunc->end();
-                 ++currBB) {
-              for (auto currMI = currBB->begin(); currMI != currBB->end();
-                   ++currMI) {
+            for (auto currBB = currFunc->begin(); currBB != currFunc->end(); ++currBB) {
+              for (auto currMI = currBB->begin(); currMI != currBB->end(); ++currMI) {
                 // 指令地址
-                if (StaticAddrProvider->Ins2addr.find(&*currMI) !=
-                    StaticAddrProvider->Ins2addr.end()) {
-                  getfunctionaddr[funcName]->addrlist.emplace(
-                      StaticAddrProvider->Ins2addr[&*currMI] &
-                      ~(L2linesize - 1));
+                if (StaticAddrProvider->Ins2addr.find(&*currMI) != StaticAddrProvider->Ins2addr.end()) {
+                  getfunctionaddr[funcName]->addrlist.emplace(StaticAddrProvider->Ins2addr[&*currMI] & ~(L2linesize - 1));
                 }
                 // 数据地址
                 if (currMI->mayLoad() || currMI->mayStore()) {
                   auto list = AddrInfo.getvalueaddr(&*currMI);
                   for (unsigned addr : list) {
-                    getfunctionaddr[funcName]->addrlist.emplace(
-                        addr & ~(L2linesize - 1));
+                    getfunctionaddr[funcName]->addrlist.emplace(addr & ~(L2linesize - 1));
                   }
                 }
               }
             }
           }
-
-        } else if (Arch == Triple::ArchType::riscv32) {
-          AnalysisDriverInstr<ConstantValueDomain<Triple::ArchType::riscv32>>
-              ConstValAna(entry, NoDep);
+        }
+        else if (Arch == Triple::ArchType::riscv32) {
+          AnalysisDriverInstr<ConstantValueDomain<Triple::ArchType::riscv32>> ConstValAna(entry, NoDep);
           auto CvAnaInfo = ConstValAna.runAnalysis();
-          AddressInformationImpl<ConstantValueDomain<Triple::ArchType::riscv32>>
-              AddrInfo(*CvAnaInfo);
-
-        } else {
+          AddressInformationImpl<ConstantValueDomain<Triple::ArchType::riscv32>> AddrInfo(*CvAnaInfo);
+        }
+        else {
           assert(0 && "Unsupported ISA for LLVMTA");
         }
       }
@@ -272,8 +266,7 @@ bool TimingAnalysisMain::doFinalization(Module &M) {
       AnalysisEntryPoint = entry;
       func2corenum[entry] = CurrentCore;
       if (!machineFunctionCollector->hasFunctionByName(AnalysisEntryPoint)) {
-        outs() << "No Timing Analysis Run. There is no entry point: "
-               << AnalysisEntryPoint << "\n";
+        outs() << "No Timing Analysis Run. There is no entry point: " << AnalysisEntryPoint << "\n";
         // exit(1);
       }
 
@@ -311,18 +304,20 @@ bool TimingAnalysisMain::doFinalization(Module &M) {
       }
       VERBOSE_PRINT(" -> Finished Preprocessing Phase\n");
 
-      outs() << "Timing Analysis for entry point: " << AnalysisEntryPoint
-             << "\n";
+      outs() << "Timing Analysis for entry point: " << AnalysisEntryPoint << "\n";
+
       // Dispatch the value analysis
       auto Arch = getTargetMachine().getTargetTriple().getArch();
       if (Arch == Triple::ArchType::arm) {
+        // 时间瓶颈
         dispatchValueAnalysis<Triple::ArchType::arm>();
-      } else if (Arch == Triple::ArchType::riscv32) {
+      }
+      else if (Arch == Triple::ArchType::riscv32) {
         dispatchValueAnalysis<Triple::ArchType::riscv32>();
-      } else {
+      }
+      else {
         assert(0 && "Unsupported ISA for LLVMTA");
       }
-
 
       Myfile.open("bound_output.log", std::ios::app);
 
@@ -330,8 +325,6 @@ bool TimingAnalysisMain::doFinalization(Module &M) {
           Myfile << "taskName=" << entry << " BOUND=" << globalBound << "\n";
       }
       Myfile.close();
-
-
 
       PersistenceScopeInfo::deletper();
     }
@@ -345,8 +338,7 @@ void TimingAnalysisMain::dispatchValueAnalysis() {
   ofstream Myfile;
 
   std::tuple<> NoDep;
-  AnalysisDriverInstr<ConstantValueDomain<ISA>> ConstValAna(
-      AnalysisEntryPoint, NoDep);
+  AnalysisDriverInstr<ConstantValueDomain<ISA>> ConstValAna(AnalysisEntryPoint, NoDep);
   auto CvAnaInfo = ConstValAna.runAnalysis();
 
   LoopBoundInfo->computeLoopBoundFromCVDomain(*CvAnaInfo);
@@ -439,24 +431,19 @@ void TimingAnalysisMain::dispatchValueAnalysis() {
   Myfile.close();
 }
 
-void TimingAnalysisMain::dispatchAnalysisType(AddressInformation &
-                                              AddressInfo) {
+void TimingAnalysisMain::dispatchAnalysisType(AddressInformation & AddressInfo) {
   AnalysisResults &Ar = AnalysisResults::getInstance();
   // Timing & CRPD calculation need normal muarch analysis first
-  if (AnaType.isSet(AnalysisType::TIMING) ||
-      AnaType.isSet(AnalysisType::CRPD)) {
+  if (AnaType.isSet(AnalysisType::TIMING) || AnaType.isSet(AnalysisType::CRPD)) {
     auto Bound = dispatchTimingAnalysis(AddressInfo);
     // Ar.registerResult("total", Bound);
 
     if (Bound) {
       double cycles = Bound.get().ub;
-
       globalBound = cycles;
-
-      outs() << "Calculated Timing Bound: "
-              << llvm::format("%-20.0f", cycles) << "\n";
-
-    } else {
+      outs() << "Calculated Timing Bound: " << llvm::format("%-20.0f", cycles) << "\n";
+    }
+    else {
       outs() << "Calculated Timing Bound: infinite\n";
     }
   }
@@ -464,9 +451,9 @@ void TimingAnalysisMain::dispatchAnalysisType(AddressInformation &
     auto Bound = dispatchCacheAnalysis(AnalysisType::L1ICACHE, AddressInfo);
     // Ar.registerResult("icache", Bound);
     if (Bound) {
-      outs() << "Calculated " << "Instruction Cache Miss Bound: "
-              << llvm::format("%-20.0f", Bound.get().ub) << "\n";
-    } else {
+      outs() << "Calculated " << "Instruction Cache Miss Bound: " << llvm::format("%-20.0f", Bound.get().ub) << "\n";
+    }
+    else {
       outs() << "Calculated " << "Instruction Cache Miss Bound: infinite\n";
     }
   }
@@ -474,9 +461,9 @@ void TimingAnalysisMain::dispatchAnalysisType(AddressInformation &
     auto Bound = dispatchCacheAnalysis(AnalysisType::L1DCACHE, AddressInfo);
     // Ar.registerResult("dcache", Bound);
     if (Bound) {
-      outs() << "Calculated " << "Data Cache Miss Bound: "
-              << llvm::format("%-20.0f", Bound.get().ub) << "\n";
-    } else {
+      outs() << "Calculated " << "Data Cache Miss Bound: " << llvm::format("%-20.0f", Bound.get().ub) << "\n";
+    }
+    else {
       outs() << "Calculated " << "Data Cache Miss Bound: infinite\n";
     }
   }
@@ -487,23 +474,21 @@ void TimingAnalysisMain::dispatchAnalysisType(AddressInformation &
 /// ///////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////
 
-boost::optional<BoundItv> TimingAnalysisMain::dispatchTimingAnalysis(
-    AddressInformation & AddressInfo) {
+boost::optional<BoundItv> TimingAnalysisMain::dispatchTimingAnalysis(AddressInformation & AddressInfo) {
   switch (MuArchType) {
-  case MicroArchitecturalType::FIXEDLATENCY:
-    assert(MemTopType == MemoryTopologyType::NONE &&
-            "Fixed latency has no external memory");
-    return dispatchFixedLatencyTimingAnalysis();
-  case MicroArchitecturalType::PRET:
-    return dispatchPretTimingAnalysis(AddressInfo);
-  case MicroArchitecturalType::INORDER:
-  case MicroArchitecturalType::STRICTINORDER:
-    return dispatchInOrderTimingAnalysis(AddressInfo);
-  case MicroArchitecturalType::OUTOFORDER:
-    return dispatchOutOfOrderTimingAnalysis(AddressInfo);
-  default:
-    errs() << "No known microarchitecture chosen.\n";
-    return boost::none;
+    case MicroArchitecturalType::FIXEDLATENCY:
+      assert(MemTopType == MemoryTopologyType::NONE && "Fixed latency has no external memory");
+      return dispatchFixedLatencyTimingAnalysis();
+    case MicroArchitecturalType::PRET:
+      return dispatchPretTimingAnalysis(AddressInfo);
+    case MicroArchitecturalType::INORDER:
+    case MicroArchitecturalType::STRICTINORDER:
+      return dispatchInOrderTimingAnalysis(AddressInfo);
+    case MicroArchitecturalType::OUTOFORDER:
+      return dispatchOutOfOrderTimingAnalysis(AddressInfo);
+    default:
+      errs() << "No known microarchitecture chosen.\n";
+      return boost::none;
   }
 }
 

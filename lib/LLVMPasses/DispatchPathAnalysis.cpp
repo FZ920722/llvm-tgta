@@ -52,11 +52,10 @@ namespace TimingAnalysisPass {
  */
 std::set<std::string> writtenByDoPathAnalysis;
 
-boost::optional<BoundItv>
-doPathAnalysis(const std::string identifier, const ExtremumType extremumType,
-               const VarCoeffVector &objective,
-               const std::list<GraphConstraint> &constraints,
-               LPAssignment *extpath, const double timeLimit) {
+boost::optional<BoundItv> doPathAnalysis(const std::string identifier, const ExtremumType extremumType,
+                                         const VarCoeffVector &objective,
+                                         const std::list<GraphConstraint> &constraints,
+                                         LPAssignment *extpath, const double timeLimit) {
   // Create the path analysis.
   std::unique_ptr<PathAnalysis> pathAnalysis;
 
@@ -69,27 +68,26 @@ doPathAnalysis(const std::string identifier, const ExtremumType extremumType,
   }
 #endif
   switch (LpSolver) {
-  case LpSolverType::LPSOLVE:
-    if (!QuietMode)
-      VERBOSE_PRINT(" -> Using Solver: LPsolve\n");
-    pathAnalysis.reset(
-        new PathAnalysisLPSolve(extremumType, objective, constraints));
-    break;
+    case LpSolverType::LPSOLVE:
+      if (!QuietMode)
+        VERBOSE_PRINT(" -> Using Solver: LPsolve\n");
+      pathAnalysis.reset(new PathAnalysisLPSolve(extremumType, objective, constraints));
+      break;
 #ifdef CPLEXINSTALLED
-  case LpSolverType::CPLEX:
-    if (!QuietMode)
-      VERBOSE_PRINT(" -> Using Solver: CPLEX\n");
-    pathAnalysis.reset(
-        new PathAnalysisCPLEX(extremumType, objective, constraints));
-    break;
+    case LpSolverType::CPLEX:
+      if (!QuietMode)
+        VERBOSE_PRINT(" -> Using Solver: CPLEX\n");
+      pathAnalysis.reset(
+          new PathAnalysisCPLEX(extremumType, objective, constraints));
+      break;
 #endif
 #ifdef GUROBIINSTALLED
-  case LpSolverType::GUROBI:
-    if (!QuietMode)
-      VERBOSE_PRINT(" -> Using Solver: Gurobi\n");
-    pathAnalysis.reset(
-        new PathAnalysisGUROBI(extremumType, objective, constraints));
-    break;
+    case LpSolverType::GUROBI:
+      if (!QuietMode)
+        VERBOSE_PRINT(" -> Using Solver: Gurobi\n");
+      pathAnalysis.reset(
+          new PathAnalysisGUROBI(extremumType, objective, constraints));
+      break;
 #endif
   }
 
@@ -105,8 +103,7 @@ doPathAnalysis(const std::string identifier, const ExtremumType extremumType,
   // Dump the results to a file.
   VERBOSE_PRINT(" -> Finished Path Analysis\n");
   const bool maximum = extremumType == ExtremumType::Maximum;
-  const std::string outputFileName =
-      "PathAnalysis_" + identifier + "_" + (maximum ? "Max" : "Min") + ".txt";
+  const std::string outputFileName = "PathAnalysis_" + identifier + "_" + (maximum ? "Max" : "Min") + ".txt";
   if (!QuietMode) {
     std::ofstream myfile;
     auto openMode = writtenByDoPathAnalysis.count(outputFileName) == 0
@@ -121,14 +118,15 @@ doPathAnalysis(const std::string identifier, const ExtremumType extremumType,
   // Return extremal value and (optionally) extremal path.
   if (pathAnalysis->isInfinite()) {
     return boost::none;
-  } else if (pathAnalysis->hasSolution()) {
+  }
+  else if (pathAnalysis->hasSolution()) {
     if (extpath != nullptr) {
       pathAnalysis->getExtremalPath(*extpath);
     }
     return pathAnalysis->getSolution();
-  } else {
-    errs() << "Path analysis could not compute valid result, see "
-           << outputFileName << " for details.\n";
+  }
+  else {
+    errs() << "Path analysis could not compute valid result, see " << outputFileName << " for details.\n";
     return boost::none;
   }
 }

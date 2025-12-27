@@ -373,8 +373,7 @@ void TimingPathAnalysis<MuState>::getBasicConstraints(
 }
 
 template <class MuState>
-void TimingPathAnalysis<MuState>::getUpperConstraints(
-    std::list<GraphConstraint> &constraints) {
+void TimingPathAnalysis<MuState>::getUpperConstraints(std::list<GraphConstraint> &constraints) {
   // Add flow constraints
   FlowConstraintProvider fcprov(sg);
   fcprov.buildUpperConstraints();
@@ -384,23 +383,19 @@ void TimingPathAnalysis<MuState>::getUpperConstraints(
   // Add persistence constraints for data and instruction cache
   if (sgl2cpers) {
     const auto &l2PersConstr = sgl2cpers->getPersistenceConstraints();
-    constraints.insert(constraints.end(), l2PersConstr.begin(),
-                       l2PersConstr.end());
+    constraints.insert(constraints.end(), l2PersConstr.begin(), l2PersConstr.end());
   }
   if (sgdcpers) {
     const auto &dataPersConstr = sgdcpers->getPersistenceConstraints();
-    constraints.insert(constraints.end(), dataPersConstr.begin(),
-                       dataPersConstr.end());
+    constraints.insert(constraints.end(), dataPersConstr.begin(), dataPersConstr.end());
   }
   if (sgicpers) {
     const auto &instrPersConstr = sgicpers->getPersistenceConstraints();
-    constraints.insert(constraints.end(), instrPersConstr.begin(),
-                       instrPersConstr.end());
+    constraints.insert(constraints.end(), instrPersConstr.begin(), instrPersConstr.end());
   }
 }
 template <class MuState>
-void TimingPathAnalysis<MuState>::getLowerConstraints(
-    std::list<GraphConstraint> &constraints) {
+void TimingPathAnalysis<MuState>::getLowerConstraints(std::list<GraphConstraint> &constraints) {
   // Add flow constraints
   FlowConstraintProvider fcprov(sg);
   fcprov.buildLowerConstraints();
@@ -410,24 +405,20 @@ void TimingPathAnalysis<MuState>::getLowerConstraints(
   // Add persistence constraints for data and instruction cache
   if (sgdcpers) {
     const auto &dataPersConstr = sgdcpers->getPersistenceConstraints();
-    constraints.insert(constraints.end(), dataPersConstr.begin(),
-                       dataPersConstr.end());
+    constraints.insert(constraints.end(), dataPersConstr.begin(), dataPersConstr.end());
   }
   if (sgicpers) {
     const auto &instrPersConstr = sgicpers->getPersistenceConstraints();
-    constraints.insert(constraints.end(), instrPersConstr.begin(),
-                       instrPersConstr.end());
+    constraints.insert(constraints.end(), instrPersConstr.begin(), instrPersConstr.end());
   }
   if (sgl2cpers) {
     const auto &l2PersConstr = sgl2cpers->getPersistenceConstraints();
-    constraints.insert(constraints.end(), l2PersConstr.begin(),
-                       l2PersConstr.end());
+    constraints.insert(constraints.end(), l2PersConstr.begin(), l2PersConstr.end());
   }
 }
 
 template <class MuState>
-void TimingPathAnalysis<MuState>::addAvailableInterferenceConstraints(
-    std::list<GraphConstraint> &constraints) {
+void TimingPathAnalysis<MuState>::addAvailableInterferenceConstraints(std::list<GraphConstraint> &constraints) {
   // Do we need the constraint maxTime = sum timestaken * ubtime because
   // constraints relate to maxTime? Currently only the DRAM refresh constraints
   // are doing that
@@ -451,22 +442,15 @@ void TimingPathAnalysis<MuState>::addAvailableInterferenceConstraints(
   // If preemptive execution mode, generate constraints for maximal additional
   // cache miss budget
   if (PreemptiveExecution) {
-    assert(sgicmpreemption && sgdcmpreemption &&
-           "Preemptive execution mode, but additional cache miss providers not "
-           "set");
+    assert(sgicmpreemption && sgdcmpreemption && "Preemptive execution mode, but additional cache miss providers not set");
     constraints.push_back(sgicmpreemption->getInterferenceConstraint());
     constraints.push_back(sgdcmpreemption->getInterferenceConstraint());
     VarCoeffVector icintvar;
-    icintvar.push_back(std::make_pair(
-        Variable::getGlobalVar(Variable::Type::maxAddInstrMissPreemption),
-        1.0));
-    constraints.push_back(std::make_tuple(icintvar, ConstraintType::LessEqual,
-                                          (unsigned)PreemptionICacheBudget));
+    icintvar.push_back(std::make_pair(Variable::getGlobalVar(Variable::Type::maxAddInstrMissPreemption), 1.0));
+    constraints.push_back(std::make_tuple(icintvar, ConstraintType::LessEqual, (unsigned)PreemptionICacheBudget));
     VarCoeffVector dcintvar;
-    dcintvar.push_back(std::make_pair(
-        Variable::getGlobalVar(Variable::Type::maxAddDataMissPreemption), 1.0));
-    constraints.push_back(std::make_tuple(dcintvar, ConstraintType::LessEqual,
-                                          (unsigned)PreemptionDCacheBudget));
+    dcintvar.push_back(std::make_pair(Variable::getGlobalVar(Variable::Type::maxAddDataMissPreemption), 1.0));
+    constraints.push_back(std::make_tuple(dcintvar, ConstraintType::LessEqual, (unsigned)PreemptionDCacheBudget));
   }
 
   // Writeback

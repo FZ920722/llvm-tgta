@@ -917,12 +917,10 @@ void StateSensitiveGraph<MicroArchDom>::buildIntraBasicBlockEdges() {
 
           // Context changes have to be accounted for
           if (DirectiveHeuristicsPassInstance->hasDirectiveAfterInstr(&instr)) {
-            Ctx.update(DirectiveHeuristicsPassInstance->getDirectiveAfterInstr(
-                &instr));
+            Ctx.update(DirectiveHeuristicsPassInstance->getDirectiveAfterInstr(&instr));
           }
 
-          // remove from working set, if this is a final instruction of a basic
-          // block
+          // remove from working set, if this is a final instruction of a basic block
           if (isEndInstr(currMBB, &instr)) {
             filterExitingStates(&instr, Ctx, workingSetOfStates);
           }
@@ -1608,43 +1606,30 @@ void StateSensitiveGraph<MicroArchDom>::joinFinalStates(
 }
 
 template <class MicroArchDom>
-void StateSensitiveGraph<MicroArchDom>::handleCallInstructions(
-    const MachineInstr *MI, const Context &Ctx,
-    std::set<unsigned> &workingSet) {
+void StateSensitiveGraph<MicroArchDom>::handleCallInstructions(const MachineInstr *MI, const Context &Ctx, std::set<unsigned> &workingSet) {
   auto &ins2cst = callStates[MI];
   ins2cst.insert(ins2cst.begin(), workingSet.begin(), workingSet.end());
   workingSet.clear();
 
   // add return state of this function to the working set
   auto &anaInfoAfter = mai.getAnaInfoAfter(MI);
-  assert(!anaInfoAfter.isBottom() &&
-         "Should not have bottom after reachable call!");
+  assert(!anaInfoAfter.isBottom() && "Should not have bottom after reachable call!");
   Context afterCallCtx(Ctx);
-  // Context changes have to be simulated here to find the correct state for the
-  // working set
+  // Context changes have to be simulated here to find the correct state for the working set
   if (DirectiveHeuristicsPassInstance->hasDirectiveAfterInstr(MI)) {
-    afterCallCtx.update(
-        DirectiveHeuristicsPassInstance->getDirectiveAfterInstr(MI));
+    afterCallCtx.update(DirectiveHeuristicsPassInstance->getDirectiveAfterInstr(MI));
   }
   auto ctx2statesAfterCall = anaInfoAfter.findAnalysisInfo(afterCallCtx);
-  assert(!ctx2statesAfterCall.isBottom() &&
-         "Should not have bottom after reachable call-context!");
+  assert(!ctx2statesAfterCall.isBottom() && "Should not have bottom after reachable call-context!");
   auto statesAfterCall = ctx2statesAfterCall.getStates();
   for (auto &state : statesAfterCall) {
     unsigned stId = graph.addVertex();
-    DEBUG_WITH_TYPE("graphbuild",
-                    dbgs() << "Adding vertex with id " << stId << "\n");
+    DEBUG_WITH_TYPE("graphbuild", dbgs() << "Adding vertex with id " << stId << "\n");
     DEBUG_WITH_TYPE("graphilp", std::cerr << state << "\n");
     // return state can be out state as well, so take context after the call
     id2context.insert(std::make_pair(stId, afterCallCtx));
     id2state.insert(std::make_pair(stId, state));
-
-    DEBUG_WITH_TYPE("detailedStateGraph",
-                    debugDump << "node : {\n	title : \"" << stId
-                              << "\"\n	label : \"Return-" << stId << "\"\n";
-                    debugDump << "info1 : \"" << id2state.at(stId)
-                              << "\"\n}\n";);
-
+    DEBUG_WITH_TYPE("detailedStateGraph", debugDump << "node : {\n	title : \"" << stId << "\"\n	label : \"Return-" << stId << "\"\n"; debugDump << "info1 : \"" << id2state.at(stId) << "\"\n}\n";);
     workingSet.insert(stId);
     this->addInitialEdge(stId);
     // Use context during the call to find return state later on

@@ -37,25 +37,17 @@
 namespace TimingAnalysisPass {
 
 template <class MuArchDomain, class Deps>
-AnalysisInformation<PartitioningDomain<MuArchDomain, MachineInstr>,
-                    MachineInstr> *
-doMuArchTimingAnalysis(Deps deps) {
-  VERBOSE_PRINT(" -> Starting Microarchitectural Analysis:\n"
-                << typeid(MuArchDomain).name() << "\n");
-
-  AnalysisDriverInstrContextMapping<MuArchDomain> microArchAna(
-      AnalysisEntryPoint, deps);
+AnalysisInformation<PartitioningDomain<MuArchDomain, MachineInstr>, MachineInstr> * doMuArchTimingAnalysis(Deps deps) {
+  VERBOSE_PRINT(" -> Starting Microarchitectural Analysis:\n" << typeid(MuArchDomain).name() << "\n");
+  AnalysisDriverInstrContextMapping<MuArchDomain> microArchAna(AnalysisEntryPoint, deps);
   auto microArchAnaInfo = microArchAna.runAnalysis();
-
   if (!QuietMode) {
     std::ofstream myfile;
     myfile.open("MicroArchAnalysis.txt", std::ios_base::trunc);
     microArchAnaInfo->dump(myfile);
     myfile.close();
   }
-
   VERBOSE_PRINT(" -> Finished Microarchitectural Analysis\n");
-
   return microArchAnaInfo;
 }
 
@@ -66,13 +58,13 @@ boost::optional<BoundItv> dispatchTimingAnalysisJoin(Deps deps) {
 
     // Statistics &stats = Statistics::getInstance();
     // stats.startMeasurement("Timing MuArch Analysis");
+    // fyj *
     auto res = doMuArchTimingAnalysis<MuArchDomain>(deps);
     // Res deleted at the end of state graph construction
     // stats.stopMeasurement("Timing MuArch Analysis");
     boost::optional<BoundItv> bound;
 
-    assert(AnaType.isSet(AnalysisType::CRPD) ||
-           AnaType.isSet(AnalysisType::TIMING));
+    assert(AnaType.isSet(AnalysisType::CRPD) || AnaType.isSet(AnalysisType::TIMING));
     // Switch whether actual WCET analysis or CRPD
     if (AnaType.isSet(AnalysisType::CRPD)) {
       dispatchCRPDPathAnalysis<MuArchDomain>(*res, TplSpecial());

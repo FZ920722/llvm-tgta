@@ -398,12 +398,12 @@ int main(int argc, char **argv) {
 
   cl::ParseCommandLineOptions(argc, argv, "llvm system compiler\n");
 
-  if (IR_Initial) {
-    errs() << "IR Initial Mode: Disable assembly functions in IR\n";
-  }
-  else {
-    errs() << "IR Initial Mode: Enable assembly functions in IR\n";
-  }
+  // if (IR_Initial) {
+  //   errs() << "IR Initial Mode: Disable assembly functions in IR\n";
+  // }
+  // else {
+  //   errs() << "IR Initial Mode: Enable assembly functions in IR\n";
+  // }
   if (TimeTrace)
     timeTraceProfilerInitialize(TimeTraceGranularity, argv[0]);
   auto TimeTraceScopeExit = make_scope_exit([]() {
@@ -647,8 +647,7 @@ static int compileModule(char **argv, LLVMContext &Context) {
   std::unique_ptr<ToolOutputFile> DwoOut;
   if (!SplitDwarfOutputFile.empty()) {
     std::error_code EC;
-    DwoOut = std::make_unique<ToolOutputFile>(SplitDwarfOutputFile, EC,
-                                              sys::fs::OF_None);
+    DwoOut = std::make_unique<ToolOutputFile>(SplitDwarfOutputFile, EC, sys::fs::OF_None);
     if (EC)
       reportError(EC.message(), SplitDwarfOutputFile);
   }
@@ -782,9 +781,8 @@ static int compileModule(char **argv, LLVMContext &Context) {
       }
     }
 
-    if (BOS) {
+    if (BOS)
       Out->os() << Buffer;
-    }
   }
 
   // Declare success.

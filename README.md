@@ -40,7 +40,7 @@ git clone https://github.com/llvm/llvm-project.git -b llvmorg-14.0.6
 cd llvm-project
 git clone https://github.com/FZ920722/llvm-tgta.git llvm/tools/llvm-tgta
 cd llvm
-patch -p1 < tools/llvm-tgta/patches/llvm-14.0.6.llvmta.diff
+patch -p2 < tools/llvm-tgta/patches/llvm-14.0.6.llvmta.diff
 ```
 
 3. Configure LLVM.

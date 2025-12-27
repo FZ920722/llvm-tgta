@@ -28,7 +28,7 @@
 #define UTIL_OPTIONS_H
 
 //#define CPLEXINSTALLED
-#define GUROBIINSTALLED
+// #define GUROBIINSTALLED
 
 #include "llvm/Support/CommandLine.h"
 

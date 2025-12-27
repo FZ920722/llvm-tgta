@@ -216,13 +216,15 @@ bool CallGraph::callsExternal(const llvm::MachineInstr *MI) const {
     const Value *val = (const Value *)callTarget.getGlobal();
     std::string functionName = val->getName().str();
     return !machineFunctionCollector->hasFunctionByName(functionName);
-  } else if (callTarget.isSymbol()) {
+  }
+  else if (callTarget.isSymbol()) {
     // External symbol, e.g. such as division, floating point stuff
     std::string funcName = callTarget.getSymbolName();
     // If there is a function for the external symbol (because we llvm-linked
     // the respective library), we treat it as normal function
     return !machineFunctionCollector->hasFunctionByName(funcName);
-  }else if (callTarget.isReg()){
+  }
+  else if (callTarget.isReg()){
     return true;
   }
 
@@ -243,7 +245,8 @@ bool CallGraph::callsExternal(const MachineFunction *MF) const {
         if (currMI.isCall()) {
           if (callsExternal(&currMI)) {
             return true;
-          } else {
+          }
+          else {
             for (auto &callee : getPotentialCallees(&currMI)) {
               if (visited.count(callee) == 0) {
                 toVisit.insert(callee);
@@ -263,11 +266,9 @@ bool CallGraph::isIndirectCall(const llvm::MachineInstr *MI) const {
   return callTarget.isReg();
 }
 
-bool CallGraph::callsNestedFunctions(const llvm::MachineInstr *MI,
-                                     int d) const {
+bool CallGraph::callsNestedFunctions(const llvm::MachineInstr *MI, int d) const {
   assert(MI->isCall() && "Cannot ask for call depth for non-call instruction");
-  if (d <
-      0) { // If negative, unbounded callstrings, call depth is never exceeded
+  if (d < 0) { // If negative, unbounded callstrings, call depth is never exceeded
     return false;
   }
   if (d == 0) {

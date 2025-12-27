@@ -293,11 +293,7 @@ StateExplorationDomainBase<StateExplorationDom, MicroArchState>::operator=(
 template <template <class> class StateExplorationDom, class MicroArchState>
 void StateExplorationDomainBase<StateExplorationDom, MicroArchState>::transfer(
     const MachineInstr *MI, Context *currentCtx, StateDep &anaInfo) {
-  DEBUG_WITH_TYPE(
-      "instructions",
-      dbgs()
-          << "Micro-architectural analysis currently processes instruction:\n"
-          << *MI << "\n");
+  DEBUG_WITH_TYPE("instructions", dbgs() << "Micro-architectural analysis currently processes instruction:\n" << *MI << "\n");
   typename MicroArchState::StateSet workingSet;
   workingSet.insert(this->states.begin(), this->states.end());
   this->states.clear();

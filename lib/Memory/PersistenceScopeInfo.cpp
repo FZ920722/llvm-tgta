@@ -64,7 +64,7 @@ PersistenceScopeInfo &PersistenceScopeInfo::getInfo() {
   return *persistenceScopeInfo;
 }
 
-    void PersistenceScopeInfo::walkMachineLoop(const MachineLoop *loop) {
+void PersistenceScopeInfo::walkMachineLoop(const MachineLoop *loop) {
   // TODO filter the loops with the conditionals!!!
   bool isLoopGoodScope = true;
 
@@ -75,8 +75,7 @@ PersistenceScopeInfo &PersistenceScopeInfo::getInfo() {
     for (auto &instr : **blkit) {
       if (instr.isCall()) {
         isLoopGoodScope &= !cg.callsExternal(&instr);
-        isLoopGoodScope &=
-            !cg.callsNestedFunctions(&instr, NumberCallsiteTokens);
+        isLoopGoodScope &= !cg.callsNestedFunctions(&instr, NumberCallsiteTokens);
         for (auto &callee : cg.getPotentialCallees(&instr)) {
           isLoopGoodScope &= !cg.callsExternal(callee);
         }
@@ -95,37 +94,26 @@ PersistenceScopeInfo &PersistenceScopeInfo::getInfo() {
     for (auto headerPred : headerPreds) {
       if (!loop->contains(headerPred)) { // Entering edge
         auto enterEdge = std::make_pair(headerPred, loop->getHeader());
-        DEBUG_WITH_TYPE("persistence",
-                        dbgs() << "Working on the enter edge (BB"
-                               << enterEdge.first->getNumber() << ", BB"
-                               << enterEdge.second->getNumber() << ")\n");
-        assert(!enterEdge.first->empty() && !enterEdge.second->empty() &&
-               "Empty edge vertices");
+        DEBUG_WITH_TYPE("persistence", dbgs() << "Working on the enter edge (BB" << enterEdge.first->getNumber() << ", BB" << enterEdge.second->getNumber() << ")\n");
+        assert(!enterEdge.first->empty() && !enterEdge.second->empty() && "Empty edge vertices");
         startScope[enterEdge].insert(loopScope);
       }
     }
-    SmallVector<std::pair<llvm::MachineBasicBlock *, llvm::MachineBasicBlock *>,
-                0>
-        exitEdges;
+    SmallVector<std::pair<llvm::MachineBasicBlock *, llvm::MachineBasicBlock *>, 0> exitEdges;
     loop->getExitEdges(exitEdges);
     for (auto exitEdgeNonConst : exitEdges) {
-      MBBedge exitEdge =
-          std::make_pair(exitEdgeNonConst.first, exitEdgeNonConst.second);
+      MBBedge exitEdge = std::make_pair(exitEdgeNonConst.first, exitEdgeNonConst.second);
       if (exitEdge.second->empty()) {
         exitEdge.second = getNonEmptySuccessorBasicBlock(exitEdge.second);
       }
-      DEBUG_WITH_TYPE("persistence",
-                      dbgs() << "Working on the exit edge (BB"
-                             << exitEdge.first->getNumber() << ", BB"
-                             << exitEdge.second->getNumber() << ")\n");
-      assert(!exitEdge.first->empty() && !exitEdge.second->empty() &&
-             "Empty edge vertices");
+      DEBUG_WITH_TYPE("persistence", dbgs() << "Working on the exit edge (BB" << exitEdge.first->getNumber() << ", BB" << exitEdge.second->getNumber() << ")\n");
+      assert(!exitEdge.first->empty() && !exitEdge.second->empty() && "Empty edge vertices");
       endScope[exitEdge].insert(loopScope);
     }
-  } else {
-    std::cerr << "[Warning] We omitted a potential persistence scope due to "
-              << "external function calls/missing context sensitivity.\n";
   }
+  // else {
+  //   std::cerr << "[Warning] We omitted a potential persistence scope due to external function calls/missing context sensitivity.\n";
+  // }
 }
 
 bool PersistenceScopeInfo::entersScope(const MBBedge edge) const {
@@ -173,17 +161,13 @@ void PersistenceScopeInfo::dump(std::ostream &mystream) const {
   llvmstream << "Starting Scopes:\n";
   for (auto &edge2scopes : startScope) {
     for (auto &sc : edge2scopes.second) {
-      llvmstream << "We start scope " << sc << " at (BB"
-                 << edge2scopes.first.first->getNumber() << ", BB"
-                 << edge2scopes.first.second->getNumber() << ")\n";
+      llvmstream << "We start scope " << sc << " at (BB" << edge2scopes.first.first->getNumber() << ", BB" << edge2scopes.first.second->getNumber() << ")\n";
     }
   }
   llvmstream << "Ending Scopes:\n";
   for (auto &edge2scopes : endScope) {
     for (auto &sc : edge2scopes.second) {
-      llvmstream << "We end scope " << sc << " at (BB"
-                 << edge2scopes.first.first->getNumber() << ", BB"
-                 << edge2scopes.first.second->getNumber() << ")\n";
+      llvmstream << "We end scope " << sc << " at (BB" << edge2scopes.first.first->getNumber() << ", BB" << edge2scopes.first.second->getNumber() << ")\n";
     }
   }
 }

@@ -173,22 +173,21 @@ cpp_int optDoubleToInt(boost::optional<double> num, bool roundUp);
 ///////////////////////////////////////////////////////////////////////////////
 
 template <class MuArchDomain, class PAI>
-boost::optional<BoundItv>
-dispatchTimingPathAnalysis(const PAI &microArchAnaInfo) {
+boost::optional<BoundItv> dispatchTimingPathAnalysis(const PAI &microArchAnaInfo) {
   switch (PathAnaType) {
-  case PathAnalysisType::SIMPLEILP: {
-    InsensitiveGraph<MuArchDomain> sg(microArchAnaInfo);
-    InsensitiveGraph<MuArchDomain> arrivalCurveSg(microArchAnaInfo);
-    return dispatchTimingPathAnalysisWeightProvider(&sg, &arrivalCurveSg);
-  }
-  case PathAnalysisType::GRAPHILP: {
-    StateSensitiveGraph<MuArchDomain> sg(microArchAnaInfo);
-    StateSensitiveGraph<MuArchDomain> arrivalCurveSg(microArchAnaInfo);
-    return dispatchTimingPathAnalysisWeightProvider(&sg, &arrivalCurveSg);
-  }
-  default:
-    errs() << "The chosen path analysis type is not supported.\n";
-    return boost::none;
+    case PathAnalysisType::SIMPLEILP: {
+      InsensitiveGraph<MuArchDomain> sg(microArchAnaInfo);
+      InsensitiveGraph<MuArchDomain> arrivalCurveSg(microArchAnaInfo);
+      return dispatchTimingPathAnalysisWeightProvider(&sg, &arrivalCurveSg);
+    }
+    case PathAnalysisType::GRAPHILP: {
+      StateSensitiveGraph<MuArchDomain> sg(microArchAnaInfo);
+      StateSensitiveGraph<MuArchDomain> arrivalCurveSg(microArchAnaInfo);
+      return dispatchTimingPathAnalysisWeightProvider(&sg, &arrivalCurveSg);
+    }
+    default:
+      errs() << "The chosen path analysis type is not supported.\n";
+      return boost::none;
   }
 }
 
@@ -329,17 +328,14 @@ void dispatchCompositionalBaseBound(TimingPathAnalysis<MuState> &tpa) {
 template <class MuState>
 void dispatchSoundSlopeComputation(TimingPathAnalysis<MuState> &tpa) {
   assert(CalculateSlopeInterferenceCurve.getBits());
-  assert(!(CalculateSlopeInterferenceCurve.getBits() &
-           (CalculateSlopeInterferenceCurve.getBits() - 1)) &&
-         "Currently only one source of interference supported");
+  assert(!(CalculateSlopeInterferenceCurve.getBits() & (CalculateSlopeInterferenceCurve.getBits() - 1)) && "Currently only one source of interference supported");
 
   // Get Basic constraints such as flow, loop bound, and persistence constraints
   std::list<GraphConstraint> constraintsWithoutInterference;
   tpa.getBasicConstraints(constraintsWithoutInterference);
 
   // Get Zero Interference constraints
-  std::list<GraphConstraint> constraintsZeroInterference(
-      constraintsWithoutInterference);
+  std::list<GraphConstraint> constraintsZeroInterference(constraintsWithoutInterference);
   tpa.addAvailableInterferenceConstraints(constraintsZeroInterference);
   tpa.setInterferenceToZero(constraintsZeroInterference);
 
@@ -347,24 +343,18 @@ void dispatchSoundSlopeComputation(TimingPathAnalysis<MuState> &tpa) {
   VarCoeffVector timeObjective = tpa.sgtp->getEdgeWeightTimesTakenVector();
 
   // Perform the longest path search (under zero interference)
-  auto res = doPathAnalysis("TimeZeroInterference", ExtremumType::Maximum,
-                            timeObjective, constraintsZeroInterference);
+  auto res = doPathAnalysis("TimeZeroInterference", ExtremumType::Maximum, timeObjective, constraintsZeroInterference);
   assert(res && "Could not compute WCET under zero interference");
 
   // Potentially calculate the maximal slope
   if (CalculateSlopeInterferenceCurve.isSet(InterferenceSource::DRAMREFRESH)) {
     auto combinedConstraints = constraintsWithoutInterference;
-    combinedConstraints.push_back(
-        tpa.sgdramrefreshes->getDRAMRefreshConstraints().back()
-        // Ignore constraint relating maxNumRefreshes with maxTime
-    );
-    calculateSoundSlope(0.1 * DRAMRefreshLatency, 10 * DRAMRefreshLatency,
-                        combinedConstraints, timeObjective,
-                        Variable::getGlobalVar(Variable::Type::maxNumRefreshes),
-                        res.get().ub);
-  } else {
-    errs() << "The current type of interference source is not supported for the"
-           << "computation of a soung penalty.\n";
+    combinedConstraints.push_back(tpa.sgdramrefreshes->getDRAMRefreshConstraints().back());
+    // Ignore constraint relating maxNumRefreshes with maxTime
+    calculateSoundSlope(0.1 * DRAMRefreshLatency, 10 * DRAMRefreshLatency, combinedConstraints, timeObjective, Variable::getGlobalVar(Variable::Type::maxNumRefreshes), res.get().ub);
+  }
+  else {
+    errs() << "The current type of interference source is not supported for the" << "computation of a soung penalty.\n";
   }
 }
 
@@ -509,24 +499,20 @@ void dispatchAdditionalMetricsToMax(TimingPathAnalysis<MuState> &tpa) {
  * Dispatch and execute the whole timing path analysis.
  */
 template <class MuState>
-boost::optional<BoundItv> dispatchTimingPathAnalysisWeightProvider(
-    MuStateGraph<MuState> *sg, MuStateGraph<MuState> *arrivalCurveSg) {
+boost::optional<BoundItv> dispatchTimingPathAnalysisWeightProvider(MuStateGraph<MuState> *sg, MuStateGraph<MuState> *arrivalCurveSg) {
   // Create a timing path analysis problem that captures all weight providers
   TimingPathAnalysis<MuState> tpa(sg);
   tpa.registerWeightProvider();
 
   // LEGACY CODE: perform a co-runner-sensitive analysis
   if (CoRunnerSensitive) {
-    assert(SharedBus != SharedBusType::NONE &&
-           "Co-runner-sensitive analysis makes only sense in "
-           "combination with shared resources.");
+    assert(SharedBus != SharedBusType::NONE && "Co-runner-sensitive analysis makes only sense in combination with shared resources.");
     // TODO: also pass in the sgdramrefreshes as soon as their
     // use is shown in the non-iterative part
     // TODO: in the long run, we need to change the structure here
     // in a way that unifies iterative and non-iterative parts and avoids
     // the current degree of code duplication
-    return doCoRunnerSensitivePathAnalysis(sg, arrivalCurveSg, *tpa.sgtp,
-                                           tpa.sgdcpers, tpa.sgicpers,tpa.sgl2cpers);
+    return doCoRunnerSensitivePathAnalysis(sg, arrivalCurveSg, *tpa.sgtp, tpa.sgdcpers, tpa.sgicpers,tpa.sgl2cpers);
   }
   // END LEGACY CODE
 
@@ -581,9 +567,7 @@ boost::optional<BoundItv> dispatchTimingPathAnalysisWeightProvider(
     return boost::none;
   }
   // Normal timing bound computation
-  assert(!DumpInterferenceResponseCurve.getBits() &&
-         !CalculateSlopeInterferenceCurve.getBits() &&
-         !CompositionalBaseBound.getBits());
+  assert(!DumpInterferenceResponseCurve.getBits() && !CalculateSlopeInterferenceCurve.getBits() && !CompositionalBaseBound.getBits());
 
   // Create constraints
   std::list<GraphConstraint> constraints;
@@ -598,11 +582,9 @@ boost::optional<BoundItv> dispatchTimingPathAnalysisWeightProvider(
   // Extremal path
   LPAssignment longestPath;
   // Perform the longest path search (under given interference budgets)
-  auto res = doPathAnalysis("Time", ExtremumType::Maximum, timeObjective,
-                            constraints, &longestPath);
+  auto res = doPathAnalysis("Time", ExtremumType::Maximum, timeObjective, constraints, &longestPath);
 
-  /* dump the state graph with coloring information, overwriting the
-   * previous dump */
+  /* dump the state graph with coloring information, overwriting the previous dump */
   if (!QuietMode) {
     std::ofstream myfile;
     if (!DumpVcgGraph) {
@@ -613,15 +595,13 @@ boost::optional<BoundItv> dispatchTimingPathAnalysisWeightProvider(
     sg->dump(myfile, &longestPath);
     myfile.close();
   }
-  
 
   AnalysisResults &ar = AnalysisResults::getInstance();
   // ar.registerResult("time", res);
 
   // If required, calculate additional metrics on a worst-case timing path
   if (MetricsOnWCEP.getBits() && longestPath.size() > 0) {
-    assert(res.get().lb == res.get().ub &&
-           "Cannot compute metrics on WCEP if bound is imprecise");
+    assert(res.get().lb == res.get().ub && "Cannot compute metrics on WCEP if bound is imprecise");
     dispatchMetricsOnWCEP(tpa, res.get().ub);
   }
   // If requested or needed for compositional analysis, maximise additional
@@ -642,32 +622,24 @@ boost::optional<BoundItv> dispatchTimingPathAnalysisWeightProvider(
 
   // Handle Compositional Blocking
   if (CompAnaType.isSet(CompositionalAnalysisType::SHAREDBUSBLOCKING)) {
-    assert(tpa.ubAccessesProvider &&
-           "Expected to receive initialized weight provider");
-    auto objUbAccesses =
-        tpa.ubAccessesProvider->getEdgeWeightTimesTakenVector();
-    auto resUbAccesses =
-        doPathAnalysis(std::string("NumAccesses"), ExtremumType::Maximum,
-                       objUbAccesses, constraints);
+    assert(tpa.ubAccessesProvider && "Expected to receive initialized weight provider");
+    auto objUbAccesses = tpa.ubAccessesProvider->getEdgeWeightTimesTakenVector();
+    auto resUbAccesses = doPathAnalysis(std::string("NumAccesses"), ExtremumType::Maximum, objUbAccesses, constraints);
     ar.registerResult("IntAna_MaxBusAccesses_BusAccesses", resUbAccesses);
-    const unsigned &MaxBlockingPerAccess =
-        blockingCyclingMemoryConfig.maxBlockingPerAccess;
+    const unsigned &MaxBlockingPerAccess = blockingCyclingMemoryConfig.maxBlockingPerAccess;
     // If we wish a joint ILP to get maximal precision
     if (CompAnaJointILP) {
       scaleVarCoeffVector(objUbAccesses, MaxBlockingPerAccess);
       auto timeObjective = tpa.sgtp->getEdgeWeightTimesTakenVector();
-      objUbAccesses.insert(objUbAccesses.end(), timeObjective.begin(),
-                           timeObjective.end());
-      auto resMaxTimeBlocking =
-          doPathAnalysis(std::string("IntAna_MaxTimeBlocking"),
-                         ExtremumType::Maximum, objUbAccesses, constraints);
+      objUbAccesses.insert(objUbAccesses.end(), timeObjective.begin(), timeObjective.end());
+      auto resMaxTimeBlocking = doPathAnalysis(std::string("IntAna_MaxTimeBlocking"), ExtremumType::Maximum, objUbAccesses, constraints);
       res = resMaxTimeBlocking;
-    } else {
+    }
+    else {
       if (res && resUbAccesses) {
-        res = BoundItv{
-            res.get().ub + resUbAccesses.get().ub * MaxBlockingPerAccess,
-            res.get().lb + resUbAccesses.get().lb * MaxBlockingPerAccess};
-      } else {
+        res = BoundItv{res.get().ub + resUbAccesses.get().ub * MaxBlockingPerAccess, res.get().lb + resUbAccesses.get().lb * MaxBlockingPerAccess};
+      }
+      else {
         res = boost::none;
       }
     }

@@ -105,17 +105,15 @@ std::list<GraphConstraint> FlowConstraintProvider::getLowerConstraints() const {
 }
 
 void FlowConstraintProvider::buildInFlowEqualsOutFlowConstraints() {
-  DEBUG_WITH_TYPE("flowConstraints",
-                  dbgs() << "Start building inFlow=outFlow constraints.\n");
+  DEBUG_WITH_TYPE("flowConstraints", dbgs() << "Start building inFlow=outFlow constraints.\n");
 
   // adding flow-constraints
   for (const auto &vertex : graph->getGraph().getVertices()) {
     // skip special vertex
     if (vertex.first != 0) {
-      DEBUG_WITH_TYPE("flowConstraints",
-                      dbgs() << "Vertex No: " << vertex.first << "\n");
-      if (FollowLocalWorstType.getBits() ==
-          0) { // If != 0, the transfer is not monotonic, thus pending states
+      DEBUG_WITH_TYPE("flowConstraints", dbgs() << "Vertex No: " << vertex.first << "\n");
+      if (FollowLocalWorstType.getBits() == 0) {
+        // If != 0, the transfer is not monotonic, thus pending states
                // might arise
                //jjy: 构造图时后继块检查
         // assert(vertex.second.getPredecessors().size() > 0 &&
@@ -140,8 +138,7 @@ void FlowConstraintProvider::buildInFlowEqualsOutFlowConstraints() {
         VarCoeffVector vars2;
         vars2.push_back(std::make_pair(edgeTimesTakenVar, 1));
         vars2.push_back(std::make_pair(edgeIsEndVar, -1));
-        GraphConstraint constr =
-            std::make_tuple(vars2, ConstraintType::GreaterEqual, 0);
+        GraphConstraint constr = std::make_tuple(vars2, ConstraintType::GreaterEqual, 0);
         inFlowEqualsOutFlowConstraints.push_back(constr);
         vars2.clear();
         auto edgeIsStartVar = Variable::getEdgeVar(isStartType, edge);
@@ -164,8 +161,7 @@ void FlowConstraintProvider::buildInFlowEqualsOutFlowConstraints() {
 
     // add constraint with constraint type 3 (equality) and right hand value of
     // 0
-    GraphConstraint constr =
-        std::make_tuple(variables, ConstraintType::Equal, 0);
+    GraphConstraint constr = std::make_tuple(variables, ConstraintType::Equal, 0);
     inFlowEqualsOutFlowConstraints.push_back(constr);
   }
 

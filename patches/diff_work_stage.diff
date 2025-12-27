@@ -113,10 +113,10 @@ index 31d4fc7d02bf..ce03b3199b9f 100644
    LastResult = nullptr;
  }
 diff --git a/llvm/lib/Transforms/Utils/HelloWorld.cpp b/llvm/lib/Transforms/Utils/HelloWorld.cpp
-index 7019e9e4451b..bef0373364ca 100644
+index 7019e9e4451b..b998e2a453c2 100644
 --- a/llvm/lib/Transforms/Utils/HelloWorld.cpp
 +++ b/llvm/lib/Transforms/Utils/HelloWorld.cpp
-@@ -7,11 +7,34 @@
+@@ -7,11 +7,71 @@
  //===----------------------------------------------------------------------===//
  
  #include "llvm/Transforms/Utils/HelloWorld.h"
@@ -132,23 +132,63 @@ index 7019e9e4451b..bef0373364ca 100644
  
  using namespace llvm;
  
- PreservedAnalyses HelloWorldPass::run(Function &F,
-                                       FunctionAnalysisManager &AM) {
+-PreservedAnalyses HelloWorldPass::run(Function &F,
+-                                      FunctionAnalysisManager &AM) {
 -  errs() << F.getName() << "\n";
+-  return PreservedAnalyses::all();
++PreservedAnalyses HelloWorldPass::run(Function &F, FunctionAnalysisManager &AM) {
++
++  if (F.hasFnAttribute(Attribute::NoReturn)) {
++    F.deleteBody();
++    return PreservedAnalyses::none();
++  }
++  bool IRModified = false;
++
++  // 若存在 inline asm，删除整个函数体
 +  for (auto &BB : F) {
-+    // F.setLinkage(GlobalValue::ExternalLinkage);
-+    // Module *M = F.getParent();
-+    // LLVMContext &Context = M->getContext();
 +    for (auto &I : BB) {
-+      // errs() << I.getName() << "\n";
-+      if (CallInst *CI = dyn_cast<CallInst>(&I)) {
++      if (auto *CI = dyn_cast<CallInst>(&I)) {
 +        if (CI->isInlineAsm()) {
-+          // errs() << "Found inline assembly in function: " << F.getName() << "\n";
 +          F.deleteBody();
 +          return PreservedAnalyses::none();
 +        }
 +      }
 +    }
 +  }
-   return PreservedAnalyses::all();
++
++  // Module *M = F.getParent();
++  // Function *DoNothing = Intrinsic::getDeclaration(M, Intrinsic::donothing);
++
++  for (auto &BB : F) {
++    for (auto instI = BB.begin(), instE = BB.end(); instI != instE; ) {
++      Instruction &I = *instI++;
++      if (auto *callInst = dyn_cast<CallInst>(&I)) {
++        Function *calledFunc = callInst->getCalledFunction();
++        bool IsNoReturn = callInst->hasFnAttr(Attribute::NoReturn) || (calledFunc && calledFunc->hasFnAttribute(Attribute::NoReturn));
++        if (!IsNoReturn)
++          continue;
++
++        // 1. 插入空操作
++        // IRBuilder<> B(callInst);
++        // B.CreateCall(DoNothing);
++
++        // 2. 移除 call 上的 noreturn
++        callInst->removeFnAttr(Attribute::NoReturn);
++
++        // 3. 若被调函数是 noreturn，仅移除 call，不动 callee
++        // callInst->eraseFromParent();
++
++        IRModified = true;
++      }
++    }
++  }
++
++  // 4. 如果当前函数被标成 noreturn，必须移除
++  if (F.hasFnAttribute(Attribute::NoReturn)) {
++    F.removeFnAttr(Attribute::NoReturn);
++    IRModified = true;
++  }
++
++  return IRModified ? PreservedAnalyses::none()
++                    : PreservedAnalyses::all();
  }

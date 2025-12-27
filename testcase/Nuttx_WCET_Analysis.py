@@ -22,9 +22,6 @@ def IRCompile(_param):
         # (1) 指令分析
         _temp_target, _, _, _temp_compiler = _source_compiler.split('-')
         # -marm -march=armv4t -mfloat-abi=hard
-        # "-mcpu=cortex-a7",
-        # "-mfloat-abi=hard",
-        # "-mfpu=neon-vfpv4",
         _temp_sl = [f"--target={_temp_target}", "-w", "-S", "-emit-llvm", "-gline-tables-only", "-O0", "-Xclang", \
                     "-disable-O0-optnone", "-fno-builtin", "-fno-jump-tables", "-fno-optimize-sibling-calls"] + \
                 [_ditem for _ditem in _dd['arguments'][1:] if not _ditem.startswith(('-g', '-O', '-fvisibility=', '-mlong-calls', ))]
