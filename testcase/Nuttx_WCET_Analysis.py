@@ -82,8 +82,6 @@ if __name__ == "__main__":
         "--ta-mem-latency=100",
         "--ta-lpsolver=lpsolve",
         "--core-numbers=1",
-        "--ta-quiet=true",
-        "--ta-lpsolver=lpsolve",
         "-debug-only="
     ]
 
@@ -150,6 +148,7 @@ if __name__ == "__main__":
                     -globaldce \
                     -dce \
                     -lowerswitch \
+                    -simplifycfg \
                     -o optimized.ll") != 0:
         exit(1)
 
