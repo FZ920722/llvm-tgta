@@ -24,7 +24,7 @@ def IRCompile(_param):
         # -marm -march=armv4t -mfloat-abi=hard
         _temp_sl = [f"--target={_temp_target}", "-w", "-S", "-emit-llvm", "-gline-tables-only", "-O0", "-Xclang", \
                     "-disable-O0-optnone", "-fno-builtin", "-fno-jump-tables", "-fno-optimize-sibling-calls"] + \
-                [_ditem for _ditem in _dd['arguments'][1:] if not _ditem.startswith(('-g', '-O', '-fvisibility=', '-mlong-calls', ))]
+                    [_ditem for _ditem in _dd['arguments'][1:] if not _ditem.startswith(('-g', '-O', '-fvisibility=', '-mlong-calls', ))]
         _temp_sl[-2] = os.path.join(IRFILE_PATH, f"{_sfname}.ll")
         if _temp_compiler == 'gcc':
             _temp_sl = ['clang'] + _temp_sl
@@ -32,13 +32,15 @@ def IRCompile(_param):
             _temp_sl = ['clang++'] + _temp_sl
         else:
             exit(1)
+        _temp_sl[-1] = os.path.join(_dd['directory'], _temp_sl[-1])
 
         # (2) 指令执行
         os.chdir(_dd['directory'])
         _temp_ss = shlex.join(_temp_sl)
-        if os.system(_temp_ss ) != 0:   # " >/dev/null | tee -a {_log_txt}",
+        if os.system(_temp_ss + "> ~/data.log") != 0:   # " >/dev/null | tee -a {_log_txt}",
             print( _temp_ss + '\n')
             exit(1)
+
 
 if __name__ == "__main__":
     global CPU_COUNT, SPACE_PATH, NUTTX_PATH, ENTRYS_PATH, IRFILE_PATH, OPFILE_PATH, LLVMTA_SOURCE, IR_TARGET_PATH
@@ -78,6 +80,8 @@ if __name__ == "__main__":
         "--ta-l2cache-linesize=64",
         "--ta-mem-latency=100",
         "--core-numbers=1",
+        "--ta-quiet=true",
+        "--ta-lpsolver=lpsolve",
         "-debug-only="
     ]
 
@@ -218,5 +222,5 @@ if __name__ == "__main__":
                                                 "--ta-loop-bounds-file=LoopAnnotations.csv",
                                                 "--ta-loop-lowerbounds-file=LLoopAnnotations.csv",
                                                 "--ta-extfunc-annotation-file=ExtFuncAnnotations.csv",
-                                                IR_TARGET_PATH])) != 0:
+                                                IR_TARGET_PATH]) + " >> time.log") != 0:
             exit(1)
