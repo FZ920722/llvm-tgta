@@ -113,13 +113,14 @@ index 31d4fc7d02bf..ce03b3199b9f 100644
    LastResult = nullptr;
  }
 diff --git a/llvm/lib/Transforms/Utils/HelloWorld.cpp b/llvm/lib/Transforms/Utils/HelloWorld.cpp
-index 7019e9e4451b..bef0373364ca 100644
+index 7019e9e4451b..e66d7c41b6b0 100644
 --- a/llvm/lib/Transforms/Utils/HelloWorld.cpp
 +++ b/llvm/lib/Transforms/Utils/HelloWorld.cpp
-@@ -7,11 +7,34 @@
+@@ -7,11 +7,67 @@
  //===----------------------------------------------------------------------===//
  
  #include "llvm/Transforms/Utils/HelloWorld.h"
++#include "llvm/IR/CFG.h"
 +#include "llvm/IR/Module.h"
 +#include "llvm/IR/Function.h"
 +#include "llvm/IR/IRBuilder.h"
@@ -132,23 +133,58 @@ index 7019e9e4451b..bef0373364ca 100644
  
  using namespace llvm;
  
- PreservedAnalyses HelloWorldPass::run(Function &F,
-                                       FunctionAnalysisManager &AM) {
+-PreservedAnalyses HelloWorldPass::run(Function &F,
+-                                      FunctionAnalysisManager &AM) {
 -  errs() << F.getName() << "\n";
+-  return PreservedAnalyses::all();
++PreservedAnalyses HelloWorldPass::run(Function &F, FunctionAnalysisManager &AM) {
++  // (1) 删除noreturn函数；
++  if (F.hasFnAttribute(Attribute::NoReturn)) {
++    F.deleteBody();
++    F.removeFnAttr(Attribute::NoReturn);
++    return PreservedAnalyses::none();
++  }
++
++  // (2) 删除有内链汇编的函数；
 +  for (auto &BB : F) {
-+    // F.setLinkage(GlobalValue::ExternalLinkage);
-+    // Module *M = F.getParent();
-+    // LLVMContext &Context = M->getContext();
 +    for (auto &I : BB) {
-+      // errs() << I.getName() << "\n";
-+      if (CallInst *CI = dyn_cast<CallInst>(&I)) {
++      if (auto *CI = dyn_cast<CallInst>(&I)) {
 +        if (CI->isInlineAsm()) {
-+          // errs() << "Found inline assembly in function: " << F.getName() << "\n";
 +          F.deleteBody();
 +          return PreservedAnalyses::none();
 +        }
 +      }
 +    }
 +  }
-   return PreservedAnalyses::all();
++
++  // (3) 删除noreturn的函数调用指令；
++  bool IRModified = false;
++  for (auto &BB : F) {
++    for (auto instI = BB.begin(), instE = BB.end(); instI != instE; ) {
++      Instruction &I = *instI++;
++      if (auto *callInst = dyn_cast<CallInst>(&I)) {
++        Function *calledFunc = callInst->getCalledFunction();
++        bool IsNoReturn = callInst->hasFnAttr(Attribute::NoReturn) || (calledFunc && calledFunc->hasFnAttribute(Attribute::NoReturn));
++        if (!IsNoReturn)
++          continue;
++        callInst->removeFnAttr(Attribute::NoReturn);
++        IRModified = true;
++      }
++    }
++  }
++
++  // === 3. 版本三：替换所有 unreachable 为 ret，保留 BB ===
++  for (auto &BB : F) {
++    Instruction *TI = BB.getTerminator();
++    if (isa<UnreachableInst>(TI)) {
++      IRBuilder<> B(TI);
++      if (F.getReturnType()->isVoidTy())
++        B.CreateRetVoid();
++      else
++        B.CreateRet(UndefValue::get(F.getReturnType()));
++      TI->eraseFromParent();
++      IRModified = true;
++    }
++  }
++  return IRModified ? PreservedAnalyses::none(): PreservedAnalyses::all();
  }

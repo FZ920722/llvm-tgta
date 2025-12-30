@@ -684,16 +684,13 @@ bool MicroArchitecturalState<DerivedState, Dependencies>::assumedBranchOutcome(
 }
 
 template <class DerivedState, class Dependencies>
-std::pair<const llvm::MachineInstr *, Context>
-MicroArchitecturalState<DerivedState, Dependencies>::assumedCallSite() const {
+std::pair<const llvm::MachineInstr *, Context> MicroArchitecturalState<DerivedState, Dependencies>::assumedCallSite() const {
   auto oldestReturnAssumption = returnAssumptions.front();
   // -4 of the target instruction must be the original callsite
-  if (StaticAddrProvider->hasMachineInstrByAddr(oldestReturnAssumption.first -
-                                                4)) {
-    return std::make_pair(StaticAddrProvider->getMachineInstrByAddr(
-                              oldestReturnAssumption.first - 4),
-                          oldestReturnAssumption.second);
-  } else {
+  if (StaticAddrProvider->hasMachineInstrByAddr(oldestReturnAssumption.first - 4)) {
+    return std::make_pair(StaticAddrProvider->getMachineInstrByAddr(oldestReturnAssumption.first - 4), oldestReturnAssumption.second);
+  }
+  else {
     return std::make_pair(nullptr, Context());
   }
 }

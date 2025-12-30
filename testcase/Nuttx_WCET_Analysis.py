@@ -54,6 +54,7 @@ if __name__ == "__main__":
         # "-march=armv8-a",
         # "-mcpu=arm7tdmi"
         # "-O0-disable-O0-optnone",
+        "--ta-quiet=true",
         "--ta-strict=false",
         "--ta-lpsolver-effort=maximal",
         "--ta-icache-persistence=conditionalmust",
@@ -77,6 +78,7 @@ if __name__ == "__main__":
         "--ta-l2cache-nsets=1024",
         "--ta-l2cache-linesize=64",
         "--ta-mem-latency=100",
+        "--ta-lpsolver=lpsolve",
         "--core-numbers=1",
         "-debug-only="
     ]

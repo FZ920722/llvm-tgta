@@ -11,7 +11,7 @@
             "program": "~/DiskN/llvm-project/llvm/tools/llvm-tgta/testcase/Nuttx_WCET_Analysis.py",
             "console": "integratedTerminal",
             "args":[
-                "-s", "~/DiskN/work-space",
+                "-s", "~/DiskN/work-space2",
                 "-n", "~/DiskN/nuttxspace/nuttx",
                 //"-e", "/home/fyj/DiskN/nuttxspace/nuttx",
                 "-p", "qemu-armv7a:nsh"

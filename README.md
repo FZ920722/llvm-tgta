@@ -8,9 +8,10 @@ This tool statically analyze WCET based on LLVM IR.
 
 There are no dependencies outside of LLVM to build `llvm-tgta`. The following instructions assume you will build LLVM.
 
-- ARG VARIANT="jammy"
+- ubuntu: jammy
 
-1. Initialize
+1. Initialize;
+
 ```sh
 sudo apt-get update --fix-missing
 
@@ -38,17 +39,18 @@ sudo ln -s gurobi952/linux64/lib/libgurobi95.so /usr/lib/libgurobi.so
 ```sh
 git clone https://github.com/llvm/llvm-project.git -b llvmorg-14.0.6
 cd llvm-project
-git clone https://github.com/FZ920722/llvm-tgta.git llvm/tools/llvm-tgta
+git clone <<代码的仓库地址>> llvm/tools/llvm-tgta
 cd llvm
 patch -p2 < tools/llvm-tgta/patches/llvm-14.0.6.llvmta.diff
 ```
 
 3. Configure LLVM.
+cd llvm
+mkdir build
+cd build
 ```sh
 cmake \
 -G "Ninja" \
--S <llvm-dir> \
--B <build-dir> \
 -Wno-dev \
 -Wno-suggest-override \
 -DCMAKE_C_COMPILER=gcc \
@@ -60,26 +62,31 @@ cmake \
 -DLLVM_ENABLE_DUMP=ON \
 -DLLVM_ENABLE_ASSERTIONS=ON \
 -DLLVM_INCLUDE_BENCHMARKS=OFF \
--DLLVM_ENABLE_PROJECTS="clang;lld;lldb" \
--DLLVM_TARGETS_TO_BUILD="AArch64;ARM;PowerPC;X86;RISCV"
+-DLLVM_ENABLE_PROJECTS="clang;" \
+-DLLVM_TARGETS_TO_BUILD="AArch64;ARM;RISCV"
+..
 ```
 
 
-5. Build `llvm-tgta`
+<!-- 5. Build `llvm-tgta`
 ```sh
 cmake --build  <build-dir> -- llvm-tgta
 或 cd <build-dir> && ninja -j4 llvm-tgta
 
-sudo ninja install 
-```
+sudo ninja install
+``` -->
 
 
-6. 
+4. build
 ```sh
-export GUROBI_HOME="/home/....../gurobi911/linux64" 
-export PATH="${PATH}:${GUROBI_HOME}/bin"
-export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${GUROBI_HOME}/lib"
+ninja -j12
 ```
+
+<!--
+# export GUROBI_HOME="/home/....../gurobi911/linux64"
+# export PATH="${PATH}:${GUROBI_HOME}/bin"
+# export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${GUROBI_HOME}/lib"
+-->
 
 <!-- # Usage -->
 
