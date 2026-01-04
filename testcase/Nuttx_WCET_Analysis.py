@@ -122,7 +122,7 @@ if __name__ == "__main__":
     print("S2.1 IR Generate")
     with open(os.path.abspath(os.path.join(NUTTX_PATH, 'compile_commands.json')), "r", encoding="utf-8") as f:
         loaded_data = json.load(f)
-    print(len(loaded_data))
+    # print(len(loaded_data))
 
     with Pool(processes=CPU_COUNT) as pool:
         pool.map(IRCompile, zip(range(len(loaded_data)), loaded_data))
@@ -211,5 +211,5 @@ if __name__ == "__main__":
                                                 "--ta-loop-bounds-file=LoopAnnotations.csv",
                                                 "--ta-loop-lowerbounds-file=LLoopAnnotations.csv",
                                                 "--ta-extfunc-annotation-file=ExtFuncAnnotations.csv",
-                                                IR_TARGET_PATH]) + " >> time.log") != 0:
+                                                IR_TARGET_PATH])) != 0:
             exit(1)
