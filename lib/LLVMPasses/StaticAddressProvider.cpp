@@ -145,6 +145,7 @@ bool StaticAddressProvider::runOnMachineBasicBlock(MachineBasicBlock &MBB) {
         case ARM::STRB_POST_REG://##
         case ARM::TSTri://##
         case ARM::UXTB16://##
+        case ARM::TEQrsi://##
         case ARM::IMPLICIT_DEF:
         case ARM::KILL:
         case ARM::DBG_VALUE:

@@ -113,7 +113,7 @@ index 31d4fc7d02bf..ce03b3199b9f 100644
    LastResult = nullptr;
  }
 diff --git a/llvm/lib/Transforms/Utils/HelloWorld.cpp b/llvm/lib/Transforms/Utils/HelloWorld.cpp
-index 7019e9e4451b..bc149b1db1e9 100644
+index 7019e9e4451b..1cd55cda03a7 100644
 --- a/llvm/lib/Transforms/Utils/HelloWorld.cpp
 +++ b/llvm/lib/Transforms/Utils/HelloWorld.cpp
 @@ -7,11 +7,73 @@
@@ -138,7 +138,7 @@ index 7019e9e4451b..bc149b1db1e9 100644
 -  errs() << F.getName() << "\n";
 -  return PreservedAnalyses::all();
 +PreservedAnalyses HelloWorldPass::run(Function &F, FunctionAnalysisManager &AM) {
-+  // (0) 删除所有以 "vs" 开头的函数
++  // (0) 删除所有以 "vs" 开头的函数;
 +  if (F.getName().startswith("vs")) {
 +    F.deleteBody();
 +    return PreservedAnalyses::none();
@@ -179,7 +179,7 @@ index 7019e9e4451b..bc149b1db1e9 100644
 +    }
 +  }
 +
-+  // === 3. 版本三：替换所有 unreachable 为 ret，保留 BB ===
++  // (4) 替换所有unreachable为ret，保留BB;
 +  for (auto &BB : F) {
 +    Instruction *TI = BB.getTerminator();
 +    if (isa<UnreachableInst>(TI)) {
