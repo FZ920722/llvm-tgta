@@ -114,7 +114,7 @@ if __name__ == "__main__":
     if os.system(f"./tools/configure.sh -l {args.platform}") != 0:
         exit(1)
 
-    if os.system(f"bear make -j{CPU_COUNT}") != 0:
+    if os.system(f"bear -- make -j{CPU_COUNT}") != 0:
         exit(1)
 
 
@@ -211,5 +211,5 @@ if __name__ == "__main__":
                                                 "--ta-loop-bounds-file=LoopAnnotations.csv",
                                                 "--ta-loop-lowerbounds-file=LLoopAnnotations.csv",
                                                 "--ta-extfunc-annotation-file=ExtFuncAnnotations.csv",
-                                                IR_TARGET_PATH]) + " >> time.log") != 0:
+                                                IR_TARGET_PATH])) != 0:
             exit(1)

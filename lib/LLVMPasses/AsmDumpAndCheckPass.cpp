@@ -331,6 +331,7 @@ void AsmDumpAndCheckPass::checkInstruction<llvm::Triple::ArchType::arm>(
   case ARM::STREXD://##
   case ARM::LDRD://##
   case ARM::VFMAD://##
+  case ARM::TEQrsi://##
   case ARM::BX_CALL:
   	break;
   case ARM::MOVr: // Move register to register
