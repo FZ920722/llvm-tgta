@@ -40,6 +40,7 @@ template <class MuArchDomain, class Deps>
 AnalysisInformation<PartitioningDomain<MuArchDomain, MachineInstr>, MachineInstr> * doMuArchTimingAnalysis(Deps deps) {
   VERBOSE_PRINT(" -> Starting Microarchitectural Analysis:\n" << typeid(MuArchDomain).name() << "\n");
   AnalysisDriverInstrContextMapping<MuArchDomain> microArchAna(AnalysisEntryPoint, deps);
+  // 核心代码
   auto microArchAnaInfo = microArchAna.runAnalysis();
   if (!QuietMode) {
     std::ofstream myfile;
@@ -50,7 +51,7 @@ AnalysisInformation<PartitioningDomain<MuArchDomain, MachineInstr>, MachineInstr
   VERBOSE_PRINT(" -> Finished Microarchitectural Analysis\n");
   return microArchAnaInfo;
 }
-
+// MuJoinEnabled：ta-enable-muarchjoin
 template <class MuState, class Deps>
 boost::optional<BoundItv> dispatchTimingAnalysisJoin(Deps deps) {
   if (MuJoinEnabled) {
@@ -58,7 +59,7 @@ boost::optional<BoundItv> dispatchTimingAnalysisJoin(Deps deps) {
 
     // Statistics &stats = Statistics::getInstance();
     // stats.startMeasurement("Timing MuArch Analysis");
-    // fyj *
+    // fyj * 时间有点长
     auto res = doMuArchTimingAnalysis<MuArchDomain>(deps);
     // Res deleted at the end of state graph construction
     // stats.stopMeasurement("Timing MuArch Analysis");

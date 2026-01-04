@@ -24,44 +24,56 @@
 //
 ////////////////////////////////////////////////////////////////////////////////
 
+
+#include "LLVMPasses/DispatchMemory.h"
 #include "LLVMPasses/TimingAnalysisMain.h"
+#include "LLVMPasses/DispatchFixedLatency.h"
+#include "LLVMPasses/DispatchPretPipeline.h"
+#include "LLVMPasses/StaticAddressProvider.h"
+#include "LLVMPasses/DispatchInOrderPipeline.h"
+#include "LLVMPasses/MachineFunctionCollector.h"
+#include "LLVMPasses/DispatchOutOfOrderPipeline.h"
+#include "LLVMPasses/TimingAnalysisMain.h"
+
+#include "AnalysisFramework/CallGraph.h"
 #include "AnalysisFramework/AnalysisDriver.h"
 #include "AnalysisFramework/AnalysisResults.h"
-#include "AnalysisFramework/CallGraph.h"
-#include "LLVMPasses/DispatchFixedLatency.h"
-#include "LLVMPasses/DispatchInOrderPipeline.h"
-#include "LLVMPasses/DispatchMemory.h"
-#include "LLVMPasses/DispatchOutOfOrderPipeline.h"
-#include "LLVMPasses/DispatchPretPipeline.h"
-#include "LLVMPasses/MachineFunctionCollector.h"
-#include "LLVMPasses/StaticAddressProvider.h"
-#include "Memory/PersistenceScopeInfo.h"
-#include "PartitionUtil/DirectiveHeuristics.h"
-#include "PathAnalysis/LoopBoundInfo.h"
+
 #include "PreprocessingAnalysis/AddressInformation.h"
 #include "PreprocessingAnalysis/ConstantValueDomain.h"
 
-#include "Util/GlobalVars.h"
 #include "Util/Options.h"
+#include "Util/GlobalVars.h"
 #include "Util/Statistics.h"
 
-#include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/Passes.h"
+#include "llvm/CodeGen/MachineFunctionPass.h"
+
 #include "llvm/Support/Format.h"
 
+#include "llvm/Support/JSON.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/FileSystem.h"
-#include "llvm/Support/JSON.h"
 #include "llvm/Support/MemoryBuffer.h"
+
+#include "PathAnalysis/LoopBoundInfo.h"
+#include "PathAnalysis/LoopBoundInfo.h"
+
+#include "Memory/PersistenceScopeInfo.h"
+
+#include "PartitionUtil/DirectiveHeuristics.h"
+
+
+#include <list>
 #include <cmath>
+#include <limits>
+#include <string>
+#include <sstream>
+#include <utility>
 #include <fstream>
 #include <iostream>
-#include <limits>
-#include <list>
-#include <sstream>
-#include <string>
 #include <type_traits>
-#include <utility>
+
 
 using namespace llvm;
 using namespace std;
@@ -83,37 +95,30 @@ MachineFunction *getAnalysisEntryPoint() {
 void TimingAnalysisMain::parseCoreInfo(const std::string &FileName) {
   mcif.setSize(CoreNums);
   // Using llvm::json to parse the core information
-  llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> FileOrErr =
-      llvm::MemoryBuffer::getFile(FileName);
+  llvm::ErrorOr<std::unique_ptr<llvm::MemoryBuffer>> FileOrErr = llvm::MemoryBuffer::getFile(FileName);
   if (std::error_code EC = FileOrErr.getError()) {
-    llvm::errs() << "Error happened when trying to open the file: " << FileName
-                 << "\n";
+    llvm::errs() << "Error happened when trying to open the file: " << FileName << "\n";
     llvm::errs() << "Error message: " << EC.message() << "\n";
     exit(1);
   }
 
-  llvm::Expected<llvm::json::Value> JsonVal =
-      llvm::json::parse(FileOrErr.get()->getBuffer());
+  llvm::Expected<llvm::json::Value> JsonVal = llvm::json::parse(FileOrErr.get()->getBuffer());
   // Check if Error happened
   if (auto Err = JsonVal.takeError()) {
-    llvm::errs() << "Error happened when trying to parse the json file: "
-                 << FileName << "\n";
+    llvm::errs() << "Error happened when trying to parse the json file: " << FileName << "\n";
     llvm::errs() << "Error message: " << llvm::toString(std::move(Err)) << "\n";
     exit(1);
   }
   // Check if the json file is valid
   if (!JsonVal) {
-    llvm::errs() << "Error happened when trying to parse the json file: "
-                 << FileName << "\n";
-    llvm::errs() << "Error message: " << llvm::toString(JsonVal.takeError())
-                 << "\n";
+    llvm::errs() << "Error happened when trying to parse the json file: " << FileName << "\n";
+    llvm::errs() << "Error message: " << llvm::toString(JsonVal.takeError()) << "\n";
     exit(1);
   }
   // Convert the json value to a json object
   auto *JsonArr = JsonVal->getAsArray();
   if (!JsonArr) {
-    llvm::errs() << "Error happened when trying to convert the json value to "
-                    "a json array\n";
+    llvm::errs() << "Error happened when trying to convert the json value to a json array\n";
     exit(1);
   }
 
@@ -121,8 +126,7 @@ void TimingAnalysisMain::parseCoreInfo(const std::string &FileName) {
   for (auto it = JsonArr->begin(); it != JsonArr->end(); ++it) {
     auto *Obj = it->getAsObject();
     if (!Obj) {
-      llvm::errs() << "Error happened when trying to convert the json value to "
-                      "a json object\n";
+      llvm::errs() << "Error happened when trying to convert the json value to a json object\n";
       exit(1);
     }
 
@@ -151,8 +155,7 @@ void TimingAnalysisMain::parseCoreInfo(const std::string &FileName) {
     for (auto TaskIt = tasks->begin(); TaskIt != tasks->end(); ++TaskIt) {
       auto *TaskObj = TaskIt->getAsObject();
       if (!TaskObj) {
-        llvm::errs() << "Error happened when trying to convert the json value "
-                        "to a json object\n";
+        llvm::errs() << "Error happened when trying to convert the json value to a json object\n";
         exit(1);
       }
 
@@ -172,8 +175,7 @@ void TimingAnalysisMain::parseCoreInfo(const std::string &FileName) {
 char TimingAnalysisMain::ID = 0;
 TargetMachine *TimingAnalysisMain::TargetMachineInstance = nullptr;
 
-TimingAnalysisMain::TimingAnalysisMain(TargetMachine &TM)
-    : MachineFunctionPass(ID) {
+TimingAnalysisMain::TimingAnalysisMain(TargetMachine &TM): MachineFunctionPass(ID) {
   TargetMachineInstance = &TM;
 }
 
@@ -192,6 +194,7 @@ bool TimingAnalysisMain::doFinalization(Module &M) {
   if (AnaType.getBits() == 0) {
     AnaType.addValue(AnalysisType::TIMING);
   }
+
   if (MulCType == MultiCoreType::LiangY) {
     for (auto Clist : taskMap) {
       CurrentCore = Clist.first;
@@ -201,11 +204,8 @@ bool TimingAnalysisMain::doFinalization(Module &M) {
         auto Arch = getTargetMachine().getTargetTriple().getArch();
         std::tuple<> NoDep;
         if (Arch == Triple::ArchType::arm) {
-          // (1)
           AnalysisDriverInstr<ConstantValueDomain<Triple::ArchType::arm>> ConstValAna(entry, NoDep);
-          // (2)
           auto CvAnaInfo = ConstValAna.runAnalysis();
-          // (3) AddrInfo
           AddressInformationImpl<ConstantValueDomain<Triple::ArchType::arm>> AddrInfo(*CvAnaInfo);
 
           ofstream Myfile;
@@ -216,7 +216,6 @@ bool TimingAnalysisMain::doFinalization(Module &M) {
           }
 
           functiontofs.emplace(entry, std::set<functionaddr *>());
-          // (4) CallGraph
           CallGraph &cg = CallGraph::getGraph();
           for (auto *currFunc : machineFunctionCollector->getAllMachineFunctions()) {
             string funcName = currFunc->getName().str();
@@ -224,7 +223,6 @@ bool TimingAnalysisMain::doFinalization(Module &M) {
               continue;
             }
             if (getfunctionaddr.find(funcName) == getfunctionaddr.end()) {
-              // (5)  functionaddr(funcName)
               functionaddr *f = new functionaddr(funcName);
               getfunctionaddr[funcName] = f;
             }
@@ -271,10 +269,8 @@ bool TimingAnalysisMain::doFinalization(Module &M) {
       }
 
       ofstream Myfile;
-
       // Statistics &Stats = Statistics::getInstance();
       // Stats.startMeasurement("Complete Analysis");
-
       if (CoRunnerSensitive) {
         for (int I = 0; I <= UntilIterationMeasurement; ++I) {
           std::string MeasurementId = "Until Iteration ";
@@ -469,10 +465,7 @@ void TimingAnalysisMain::dispatchAnalysisType(AddressInformation & AddressInfo) 
   }
 }
 
-///////////////////////////////////////////////////////////////////////////////
 /// Timing Analysis
-/// ///////////////////////////////////////////////////////////
-///////////////////////////////////////////////////////////////////////////////
 
 boost::optional<BoundItv> TimingAnalysisMain::dispatchTimingAnalysis(AddressInformation & AddressInfo) {
   switch (MuArchType) {
@@ -492,16 +485,14 @@ boost::optional<BoundItv> TimingAnalysisMain::dispatchTimingAnalysis(AddressInfo
   }
 }
 
-boost::optional<BoundItv> TimingAnalysisMain::dispatchCacheAnalysis(
-      AnalysisType Anatype, AddressInformation & AddressInfo) {
+boost::optional<BoundItv> TimingAnalysisMain::dispatchCacheAnalysis(AnalysisType Anatype, AddressInformation & AddressInfo) {
     switch (MuArchType) {
-    case MicroArchitecturalType::INORDER:
-    case MicroArchitecturalType::STRICTINORDER:
-      return dispatchInOrderCacheAnalysis(Anatype, AddressInfo);
-    default:
-      errs() << "Unsupported microarchitecture for standalone cache "
-                "analysis.\n";
-      return boost::none;
+      case MicroArchitecturalType::INORDER:
+      case MicroArchitecturalType::STRICTINORDER:
+        return dispatchInOrderCacheAnalysis(Anatype, AddressInfo);
+      default:
+        errs() << "Unsupported microarchitecture for standalone cache analysis.\n";
+        return boost::none;
     }
   }
 

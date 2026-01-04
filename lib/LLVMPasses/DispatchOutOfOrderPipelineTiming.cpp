@@ -78,7 +78,8 @@ double getDataCacheMissPenaltyOutOfOrder(double maxdmisses) {
     }
   }
 }
-
+// MemTopType：ta-memory-type
+// CompAnaType： ta-comp-type
 boost::optional<BoundItv> dispatchOutOfOrderTimingAnalysis(AddressInformation &addressInfo) {
   std::tuple<AddressInformation &> addrInfoTuple(addressInfo);
   configureCyclingMemories();
@@ -89,13 +90,13 @@ boost::optional<BoundItv> dispatchOutOfOrderTimingAnalysis(AddressInformation &a
       return dispatchTimingAnalysisJoin<OutOfOrderPipelineState<MemTop>>(addrInfoTuple);
     }
     case MemoryTopologyType::SEPARATECACHES: {
-      // （1）
       typedef SingleMemoryTopology<makeOptionsBackgroundMem> BgMem;
-      // （2）
-      typedef JJYSeparateCachesMemoryTopology<CacheFactory::makeOptionsInstrCache, CacheFactory::makeOptionsDataCache, CacheFactory::makeOptionsL2Cache, BgMem> MemTop;
-      // （3）
+      typedef JJYSeparateCachesMemoryTopology<CacheFactory::makeOptionsInstrCache,
+                                              CacheFactory::makeOptionsDataCache,
+                                              CacheFactory::makeOptionsL2Cache,
+                                              BgMem> MemTop;
+      // 核心
       auto timebound = dispatchTimingAnalysisJoin<OutOfOrderPipelineState<MemTop>>(addrInfoTuple);
-      // （4）
       boost::optional<BoundItv> result = timebound;
       AnalysisResults &ar = AnalysisResults::getInstance();
       boost::optional<BoundItv> icachebound = boost::none;
@@ -103,11 +104,8 @@ boost::optional<BoundItv> dispatchOutOfOrderTimingAnalysis(AddressInformation &a
         icachebound = dispatchOutOfOrderCacheAnalysis(AnalysisType::L1ICACHE, addressInfo);
         ar.registerResult("CompAna_MaxMisses_InstrMisses", icachebound);
         if (result && icachebound) {
-          result = BoundItv{
-              result.get().ub +
-                  getInstructionCacheMissPenaltyOutOfOrder(icachebound.get().ub),
-              result.get().lb +
-                  getInstructionCacheMissPenaltyOutOfOrder(icachebound.get().lb)};
+          result = BoundItv{result.get().ub + getInstructionCacheMissPenaltyOutOfOrder(icachebound.get().ub),
+                           result.get().lb + getInstructionCacheMissPenaltyOutOfOrder(icachebound.get().lb)};
         }
         else {
           result = boost::none;
@@ -120,31 +118,27 @@ boost::optional<BoundItv> dispatchOutOfOrderTimingAnalysis(AddressInformation &a
         if (result && dcachebound) {
           result = BoundItv{result.get().ub + getDataCacheMissPenaltyOutOfOrder(dcachebound.get().ub),
                             result.get().lb + getDataCacheMissPenaltyOutOfOrder(dcachebound.get().lb)};
-        } else {
+        }
+        else {
           result = boost::none;
         }
       }
 
       // If bounded result and DRAM refreshes compositional, add the refresh penalties
       if (result && CompAnaType.isSet(CompositionalAnalysisType::DRAMREFRESH)) {
-        unsigned refreshInterArrivalTime =
-            SDRAMConfig.getRefreshInterArrivalCycles();
+        unsigned refreshInterArrivalTime = SDRAMConfig.getRefreshInterArrivalCycles();
         unsigned maxRefreshes = 0;
         unsigned maxRefreshesOld = 0;
         do {
           maxRefreshesOld = maxRefreshes;
           maxRefreshes = std::ceil(result.get().ub / refreshInterArrivalTime);
-          result = BoundItv{result.get().ub + (maxRefreshes - maxRefreshesOld) *
-                                                  DRAMRefreshLatency,
-                            result.get().lb + (maxRefreshes - maxRefreshesOld) *
-                                                  DRAMRefreshLatency};
+          result = BoundItv{result.get().ub + (maxRefreshes - maxRefreshesOld) * DRAMRefreshLatency,
+                            result.get().lb + (maxRefreshes - maxRefreshesOld) * DRAMRefreshLatency};
           // Check for off-by-one to be consistent with the integrated variant
           if (maxRefreshesOld == maxRefreshes) {
-            unsigned maxRefreshesPrime = std::ceil(
-                (result.get().ub + DRAMRefreshLatency) / refreshInterArrivalTime);
+            unsigned maxRefreshesPrime = std::ceil((result.get().ub + DRAMRefreshLatency) / refreshInterArrivalTime);
             if (maxRefreshesPrime > maxRefreshes) {
-              assert((maxRefreshesPrime - maxRefreshes == 1) &&
-                     "It should be at most off-by-one.");
+              assert((maxRefreshesPrime - maxRefreshes == 1) && "It should be at most off-by-one.");
               maxRefreshes = maxRefreshesPrime;
               result = BoundItv{result.get().ub + DRAMRefreshLatency,
                                 result.get().lb + DRAMRefreshLatency};
@@ -155,11 +149,8 @@ boost::optional<BoundItv> dispatchOutOfOrderTimingAnalysis(AddressInformation &a
       return result;
     }
     case MemoryTopologyType::PRIVINSTRSPMDATASHARED: {
-      typedef SeparateMemoriesTopology<makeOptionsPrivInstrMem,
-                                       makeOptionsBackgroundMem>
-          MemTop;
-      return dispatchTimingAnalysisJoin<OutOfOrderPipelineState<MemTop>>(
-          addrInfoTuple);
+      typedef SeparateMemoriesTopology<makeOptionsPrivInstrMem, makeOptionsBackgroundMem> MemTop;
+      return dispatchTimingAnalysisJoin<OutOfOrderPipelineState<MemTop>>(addrInfoTuple);
     }
     default:
       errs() << "No known memory topology chosen.\n";

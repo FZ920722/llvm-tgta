@@ -188,16 +188,14 @@ void configureCyclingMemories() {
   if (SharedBus != SharedBusType::NONE) {
     unsigned accLat;
     if (MemTopType == MemoryTopologyType::SEPARATECACHES) {
-      // for use with caches, the latency depends on the cache line size
-      // as a whole cache line is requested at a time
-      accLat = std::max(getCachelineMemoryLatency(CacheType::INSTRUCTION),
-                        getCachelineMemoryLatency(CacheType::DATA));
-    } else {
+      // for use with caches, the latency depends on the cache line size as a whole cache line is requested at a time
+      accLat = std::max(getCachelineMemoryLatency(CacheType::INSTRUCTION), getCachelineMemoryLatency(CacheType::DATA));
+    }
+    else {
       // otherwise, only a single word is requested at a time
       accLat = Latency + PerWordLatency;
     }
-    blockingCyclingMemoryConfig.maxBlockingPerAccess =
-        NumConcurrentCores * accLat;
+    blockingCyclingMemoryConfig.maxBlockingPerAccess = NumConcurrentCores * accLat;
     blockingCyclingMemoryConfig.accessLatency = accLat;
   }
 }

@@ -15,7 +15,7 @@ from multiprocessing import Semaphore, Pool
 def IRCompile(_param):
     global IRFILE_PATH
     _dn, _dd = _param
-    print(_dn)
+    # print(_dn)
     _sfname, _ssuffix = os.path.splitext(os.path.basename(_dd['file']))
     _source_compiler = os.path.basename(_dd['arguments'][0])
     if _source_compiler != "cc" and _ssuffix not in [".s", ".S"]:
@@ -45,8 +45,7 @@ def IRCompile(_param):
 if __name__ == "__main__":
     global CPU_COUNT, SPACE_PATH, NUTTX_PATH, ENTRYS_PATH, IRFILE_PATH, OPFILE_PATH, LLVMTA_SOURCE, IR_TARGET_PATH
 
-    # ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
-
+    CPU_COUNT =  os.cpu_count()
     LLVMTA_SOURCE = [
         "llvmta",
         "-O0",
@@ -85,28 +84,24 @@ if __name__ == "__main__":
         "-debug-only="
     ]
 
-    CPU_COUNT =  os.cpu_count()
-
     parser = ArgumentParser(description='llvm-ta to nuttx')
     parser.add_argument('-s', '--space',   type=str,   help='The address of work space')
     parser.add_argument('-n', '--nuttx',   type=str,   help='The address of nuttx project')
     parser.add_argument('-e', '--entrys',   type=str,   help='The entry points list file path')
     parser.add_argument('-p', '--platform',   type=str,   help='The compile target of platform')
+    # - fvp-armv8r:nsh
+    # - qemu-armv8a:nsh
+    # - qemu-armv7a:nsh
+    # - qemu-armv7r:nsh
+    # - fvp-armv8r-aarch32:nsh
 
-    # commands file. such as compile_commands.json
-    # The source address. such as nuttx project
-    # fvp-armv8r:nsh
-    # qemu-armv8a:nsh
-    # qemu-armv7a:nsh
-    # qemu-armv7r:nsh
-    # fvp-armv8r-aarch32:nsh
-    # 1_Command_Compile
-    # 利用bear生成command_compile.json
     args = parser.parse_args()
     SPACE_PATH = args.space
     NUTTX_PATH = args.nuttx
     ENTRYS_PATH = args.entrys
 
+
+    print(f"================= STEP 1 Compile =================")
     IRFILE_PATH= os.path.join(SPACE_PATH, "_IRFile")
     if os.path.exists(IRFILE_PATH):
         shutil.rmtree(IRFILE_PATH)
@@ -122,7 +117,9 @@ if __name__ == "__main__":
     if os.system(f"bear make -j{CPU_COUNT}") != 0:
         exit(1)
 
+
     print(f"================= STEP 2 Preprorcess =================")
+    print("S2.1 IR Generate")
     with open(os.path.abspath(os.path.join(NUTTX_PATH, 'compile_commands.json')), "r", encoding="utf-8") as f:
         loaded_data = json.load(f)
     print(len(loaded_data))
@@ -131,13 +128,11 @@ if __name__ == "__main__":
         pool.map(IRCompile, zip(range(len(loaded_data)), loaded_data))
 
     os.chdir(IRFILE_PATH)
-    # (1) llvm-link
-    print(f"================= STEP 2.1 =================")
+    print("S2.2 IR Link")
     if os.system(f"llvm-link *.ll -o unoptimized.ll") != 0:
         exit(1)
 
-    # (2) opt
-    print(f"================= STEP 2.2 =================")
+    print("S2.3 IR optimize")
     if os.system(  "opt \
                     -S unoptimized.ll \
                     -mem2reg \
@@ -152,8 +147,7 @@ if __name__ == "__main__":
                     -o optimized.ll") != 0:
         exit(1)
 
-    # (3) 注释内链汇编 +  注释调试信息
-    print(f"================= STEP 2.3 =================")
+    print(f"S2.4 IR Preprorcess")
     if os.system(  "opt \
                     -S optimized.ll \
                     -passes=helloworld \
@@ -163,7 +157,6 @@ if __name__ == "__main__":
     IR_TARGET_PATH = os.path.join(IRFILE_PATH, "new_optimized.ll")
 
     print(f"================= STEP 3 Analysis =================")
-    # 3_Analysis
     OPFILE_PATH= os.path.join(SPACE_PATH, "_OFile")
     if os.path.exists(OPFILE_PATH):
         shutil.rmtree(OPFILE_PATH)
@@ -172,22 +165,19 @@ if __name__ == "__main__":
     os.chdir(OPFILE_PATH)
 
     for _entry_point in ["hello_main",]:
-        # (1) 构建工作区
-        print(f"================= Analyzing {_entry_point} =================")
+        # print(f"================= Analyzing {_entry_point} =================")
         entry_work_space = os.path.join(OPFILE_PATH, _entry_point)
         if os.path.exists(entry_work_space):
             shutil.rmtree(entry_work_space)
         os.mkdir(entry_work_space)
-
         os.chdir(entry_work_space)
-        # (2) 构建CoreInfo.json
-        print(f"================= STEP 1 =================")
+
+        print(f"S3.1 Construct CoreInfo.json")
         core_info_path =  os.path.join(entry_work_space, "CoreInfo.json")
         with open(core_info_path, 'w', encoding='utf-8') as f:
             json.dump([{"core": 0,  "tasks": [{"function": _entry_point}]}], f, indent=4, ensure_ascii=False)
 
-        # (3) 构建外部函数汇总
-        print(f"================= STEP 2 =================")
+        print(f"S3.2 Extfuncs Generate")
         if os.system(' '.join(LLVMTA_SOURCE + ["--ta-output-unknown-extfuncs",
                                                f"--core-info={core_info_path}",
                                                f"--ta-analysis-entry-point={_entry_point}",
@@ -201,8 +191,7 @@ if __name__ == "__main__":
                 row[0] = row[0].replace("<max cycles/accesses/hits/misses>", "1/1/1/1")
             df.to_csv('ExtFuncAnnotations.csv', index=False, header=0)
 
-        # (4) 构建循环边界汇总
-        print(f"================= STEP 3 =================")
+        print(f"S3.3 LoopsBound Generate")
         if os.system(' '.join(LLVMTA_SOURCE + ["--ta-output-unknown-loops",
                                                f"--core-info={core_info_path}",
                                                f"--ta-analysis-entry-point={_entry_point}",
@@ -215,8 +204,7 @@ if __name__ == "__main__":
             df.to_csv('LoopAnnotations.csv', index=False, header=0)
         shutil.copy("LoopAnnotations.csv", "LLoopAnnotations.csv")
 
-        # (5) WCET分析
-        print(f"================= STEP 4 =================")
+        print(f"S3.4 WCET Analyze")
         if os.system(' '.join(LLVMTA_SOURCE + [f"--core-info={core_info_path}",
                                                f"--ta-analysis-entry-point={_entry_point}",
                                                 "--ta-restart-after-external",

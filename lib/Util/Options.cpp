@@ -270,9 +270,10 @@ cl::opt<unsigned> L2assoc("ta-l2cache-assoc",
   cl::desc("The associativity of the L2 cache. The default is 4"),
   cl::cat(CacheConfigCat));
 
-cl::opt<unsigned>NN_SET("ta-l2cache-nsets", cl::init(32),
-           cl::desc("The number of cache sets of L2 cache. The default is 128"),
-           cl::cat(MultiCoreCat));
+cl::opt<unsigned>NN_SET("ta-l2cache-nsets",
+  cl::init(32),
+  cl::desc("The number of cache sets of L2 cache. The default is 128"),
+  cl::cat(MultiCoreCat));
 
 cl::opt<CacheReplPolicyType> DataCacheReplPolType(
     "ta-dcache-replpol",
@@ -304,31 +305,29 @@ cl::opt<PersistenceType> DataCachePersType(
                    "Conditional must persistence analysis")),
     cl::cat(LLVMTACat));
 
-cl::opt<unsigned> Dlinesize(
-    "ta-dcache-linesize", cl::init(16),
+cl::opt<unsigned> Dlinesize("ta-dcache-linesize",
+    cl::init(16),
     cl::desc("The linesize of the data cache in bytes. The default is 16"),
     cl::cat(CacheConfigCat));
 
-cl::opt<unsigned>
-    Dassoc("ta-dcache-assoc", cl::init(2),
-           cl::desc("The associativity of the data cache. The default is 2"),
-           cl::cat(CacheConfigCat));
+cl::opt<unsigned> Dassoc("ta-dcache-assoc",
+    cl::init(2),
+    cl::desc("The associativity of the data cache. The default is 2"),
+    cl::cat(CacheConfigCat));
 
-cl::opt<unsigned> Dnsets(
-    "ta-dcache-nsets", cl::init(16),
+cl::opt<unsigned> Dnsets("ta-dcache-nsets",
+    cl::init(16),
     cl::desc("The number of cache sets of the data cache. The default is 32"),
     cl::cat(CacheConfigCat));
 // 写回
-cl::opt<bool>
-    DataCacheWriteBack("ta-dcache-write-back", cl::init(false),
-                       cl::desc("Enables write-back mode of the cache. The "
-                                "default is write-through (false)"),
-                       cl::cat(CacheConfigCat));
+cl::opt<bool> DataCacheWriteBack("ta-dcache-write-back",
+    cl::init(false),
+    cl::desc("Enables write-back mode of the cache. The default is write-through (false)"),
+    cl::cat(CacheConfigCat));
 
-cl::opt<bool> DataCacheWriteAllocate(
-    "ta-dcache-write-allocate", cl::init(false),
-    cl::desc("Enables write-allocate mode of the cache. The default is =false "
-             "to use write-non-allocate mode"),
+cl::opt<bool> DataCacheWriteAllocate("ta-dcache-write-allocate",
+    cl::init(false),
+    cl::desc("Enables write-allocate mode of the cache. The default is =false to use write-non-allocate mode"),
     cl::cat(CacheConfigCat));
 
 cl::opt<bool> UnblockStores(
@@ -356,106 +355,80 @@ cl::opt<unsigned>
                      "transferring a single word takes 10 cycles)"),
             cl::cat(HardwareDescrCat));
 
-cl::opt<unsigned>
-    L2Latency("ta-L2-latency", cl::init(6),
-              cl::desc("The latency of the L2 cache. (default '4', i.e. "
-                       "transferring a single word takes 5 cycles)"),
-              cl::cat(HardwareDescrCat));
-
-cl::opt<unsigned>
-    PerWordLatency("ta-mem-per-word-latency", cl::init(1),
-                   cl::desc("The additional latency of the background memory "
-                            "for each transferred word. (default '1')"),
-                   cl::cat(HardwareDescrCat));
-
-/* aliases provided for backwards compatibility */
-cl::alias SRAMLatency("ta-sram-latency", cl::desc("Alias for ta-mem-latency"),
-                      cl::aliasopt(Latency), cl::cat(HardwareDescrCat));
-cl::alias DRAMLatency("ta-dram-latency", cl::desc("Alias for ta-mem-latency"),
-                      cl::aliasopt(Latency), cl::cat(HardwareDescrCat));
-
-cl::opt<unsigned> DRAMRefreshLatency(
-    "ta-dram-refresh-latency", cl::init(7),
-    cl::desc("The latency of one refresh of the DRAM background memory. Option "
-             "only applies to DRAM background memory. (default '7')"),
+cl::opt<unsigned> L2Latency("ta-L2-latency",
+    cl::init(6),
+    cl::desc("The latency of the L2 cache. (default '4', i.e. transferring a single word takes 5 cycles)"),
     cl::cat(HardwareDescrCat));
 
-cl::bits<CRPDAnalysisType> CRPDAnaType(
-    "ta-crpdana-type",
-    cl::desc("Choose type of CRPD analyses to run. Only valid when passed with "
-             "--ta-ana-type=crpd (default 'ecb,ucb,resilience')"),
+cl::opt<unsigned> PerWordLatency("ta-mem-per-word-latency",
+    cl::init(1),
+    cl::desc("The additional latency of the background memory for each transferred word. (default '1')"),
+    cl::cat(HardwareDescrCat));
+
+/* aliases provided for backwards compatibility */
+cl::alias SRAMLatency("ta-sram-latency",
+    cl::desc("Alias for ta-mem-latency"),
+    cl::aliasopt(Latency),
+    cl::cat(HardwareDescrCat));
+
+cl::alias DRAMLatency("ta-dram-latency",
+    cl::desc("Alias for ta-mem-latency"),
+    cl::aliasopt(Latency),
+    cl::cat(HardwareDescrCat));
+
+cl::opt<unsigned> DRAMRefreshLatency("ta-dram-refresh-latency",
+    cl::init(7),
+    cl::desc("The latency of one refresh of the DRAM background memory. Option only applies to DRAM background memory. (default '7')"),
+    cl::cat(HardwareDescrCat));
+
+cl::bits<CRPDAnalysisType> CRPDAnaType("ta-crpdana-type",
+    cl::desc("Choose type of CRPD analyses to run. Only valid when passed with --ta-ana-type=crpd (default 'ecb,ucb,resilience')"),
     cl::CommaSeparated,
-    cl::values(clEnumValN(CRPDAnalysisType::ECB, "ecb", "Perform ECB analysis"),
-               clEnumValN(CRPDAnalysisType::UCB, "ucb", "Perform UCB analysis"),
-               clEnumValN(CRPDAnalysisType::DCUCB, "dcucb",
-                          "Perform DC-UCB analysis"),
-               clEnumValN(CRPDAnalysisType::RESILIENCE, "resilience",
-                          "Perform Resilience analysis")),
+    cl::values(clEnumValN(CRPDAnalysisType::ECB,        "ecb",        "Perform ECB analysis"),
+               clEnumValN(CRPDAnalysisType::UCB,        "ucb",        "Perform UCB analysis"),
+               clEnumValN(CRPDAnalysisType::DCUCB,      "dcucb",      "Perform DC-UCB analysis"),
+               clEnumValN(CRPDAnalysisType::RESILIENCE, "resilience", "Perform Resilience analysis")),
     cl::cat(LLVMTACat));
 
-cl::opt<bool>
-    UCBClever("ta-ucb-clever", cl::init(false),
-              cl::desc("Enables the clever UCB mode that handles spatial "
-                       "locality in a more precise way. (default false)"),
-              cl::cat(LLVMTACat));
+cl::opt<bool> UCBClever("ta-ucb-clever",
+    cl::init(false),
+    cl::desc("Enables the clever UCB mode that handles spatial locality in a more precise way. (default false)"),
+    cl::cat(LLVMTACat));
 
-cl::bits<AnalysisType> AnaType(
-    "ta-ana-type",
+cl::bits<AnalysisType> AnaType("ta-ana-type",
     cl::desc("Choose the type of analysis to run (default 'timing')"),
     cl::CommaSeparated,
-    cl::values(
-        clEnumValN(AnalysisType::VALANA, "value",
-                   "Perform value and address analysis"),
-        clEnumValN(AnalysisType::TIMING, "timing",
-                   "Compute execution time bound"),
-        clEnumValN(AnalysisType::CRPD, "crpd",
-                   "Compute cache-related preemption delay (characterisation)"),
-        clEnumValN(AnalysisType::L1ICACHE, "l1icache",
-                   "Calculate a bound on the number of L1-Instruction Cache "
-                   "hits and misses"),
-        clEnumValN(AnalysisType::L1DCACHE, "l1dcache",
-                   "Calculate a bound on the number of L1-Data Cache hits and "
-                   "misses")),
+    cl::values( clEnumValN(AnalysisType::VALANA, "value",       "Perform value and address analysis"),
+                clEnumValN(AnalysisType::TIMING, "timing",      "Compute execution time bound"),
+                clEnumValN(AnalysisType::CRPD, "crpd",          "Compute cache-related preemption delay (characterisation)"),
+                clEnumValN(AnalysisType::L1ICACHE, "l1icache",  "Calculate a bound on the number of L1-Instruction Cache hits and misses"),
+                clEnumValN(AnalysisType::L1DCACHE, "l1dcache",  "Calculate a bound on the number of L1-Data Cache hits and misses")),
     cl::cat(LLVMTACat));
 
-llvm::cl::bits<MetricType> MetricsOnWCEP(
-    "ta-metric-wcep",
-    cl::desc("Which metrics should be maximised on a worst-case timing path "
-             "(default none)"),
+llvm::cl::bits<MetricType> MetricsOnWCEP("ta-metric-wcep",
+    cl::desc("Which metrics should be maximised on a worst-case timing path (default none)"),
     cl::CommaSeparated,
-    cl::values(
-        clEnumValN(MetricType::L1DMISSES, "l1dmisses", "L1-Data-Cache misses"),
-        clEnumValN(MetricType::L1IMISSES, "l1imisses",
-                   "L1-Instruction-Cache misses"),
-        clEnumValN(MetricType::BUSACCESSES, "busaccesses",
-                   "Accesses to the shared bus"),
-        clEnumValN(MetricType::BUSSTORES, "busstores",
-                   "Stores to the shared bus"),
-        clEnumValN(MetricType::WRITEBACKS, "writebacks",
-                   "Writebacks (only makes sense on write-back caches)")),
+    cl::values( clEnumValN(MetricType::L1DMISSES, "l1dmisses",      "L1-Data-Cache misses"),
+                clEnumValN(MetricType::L1IMISSES, "l1imisses",      "L1-Instruction-Cache misses"),
+                clEnumValN(MetricType::BUSACCESSES, "busaccesses",  "Accesses to the shared bus"),
+                clEnumValN(MetricType::BUSSTORES, "busstores",      "Stores to the shared bus"),
+                clEnumValN(MetricType::WRITEBACKS, "writebacks",    "Writebacks (only makes sense on write-back caches)")),
     cl::cat(LLVMTACat));
 
-llvm::cl::bits<MetricType> MetricsToMax(
-    "ta-metric-max",
-    cl::desc("Which metrics should be maximised additional to the timing "
-             "(default none)"),
+llvm::cl::bits<MetricType> MetricsToMax("ta-metric-max",
+    cl::desc("Which metrics should be maximised additional to the timing (default none)"),
     cl::CommaSeparated,
-    cl::values(
-        clEnumValN(MetricType::L1DMISSES, "l1dmisses", "L1-Data-Cache misses"),
-        clEnumValN(MetricType::L1IMISSES, "l1imisses",
-                   "L1-Instruction-Cache misses"),
-        clEnumValN(MetricType::BUSACCESSES, "busaccesses",
-                   "Accesses to the shared bus"),
-        clEnumValN(MetricType::BUSSTORES, "busstores",
-                   "Stores to the shared bus"),
-        clEnumValN(MetricType::WRITEBACKS, "writebacks",
-                   "Writebacks (only makes sense on write-back caches)")),
+    cl::values( clEnumValN(MetricType::L1DMISSES, "l1dmisses",      "L1-Data-Cache misses"),
+                clEnumValN(MetricType::L1IMISSES, "l1imisses",      "L1-Instruction-Cache misses"),
+                clEnumValN(MetricType::BUSACCESSES, "busaccesses",  "Accesses to the shared bus"),
+                clEnumValN(MetricType::BUSSTORES, "busstores",      "Stores to the shared bus"),
+                clEnumValN(MetricType::WRITEBACKS, "writebacks",    "Writebacks (only makes sense on write-back caches)")),
     cl::cat(LLVMTACat));
 
-cl::opt<bool> StrictMode("ta-strict", cl::init(true),
-                         cl::desc("Enables the strict mode: assert when "
-                                  "unknown situation arises (default true)"),
-                         cl::cat(LLVMTACat));
+cl::opt<bool> StrictMode("ta-strict",
+    cl::init(true),
+    cl::desc("Enables the strict mode: assert when unknown situation arises (default true)"),
+    cl::cat(LLVMTACat));
 
 cl::opt<AnaInfoPolicy> AnaInfoPol(
     "ta-anainfo-policy",
@@ -494,28 +467,22 @@ cl::opt<unsigned>
 
 // Microarchitectural Analysis Options
 
-cl::opt<bool>
-    MuJoinEnabled("ta-enable-muarchjoin", cl::init(true),
-                  cl::desc("Enable joining of similar microarchitectural "
-                           "states for efficiency (default true)"),
-                  cl::cat(LLVMTACat));
+cl::opt<bool> MuJoinEnabled("ta-enable-muarchjoin",
+    cl::init(true),
+    cl::desc("Enable joining of similar microarchitectural states for efficiency (default true)"),
+    cl::cat(LLVMTACat));
 
 // Path Analysis Options
 
-cl::opt<PathAnalysisType> PathAnaType(
-    "ta-pathana-type",
-    cl::desc("Choose the type of path analysis to run (default 'simpleilp')"),
+cl::opt<PathAnalysisType> PathAnaType("ta-pathana-type",
     cl::init(PathAnalysisType::GRAPHILP),
-    cl::values(clEnumValN(PathAnalysisType::SIMPLEILP, "simpleilp",
-                          "Simple ILP solution"),
-               clEnumValN(PathAnalysisType::GRAPHILP, "graphilp",
-                          "Graph ILP solution (prediction file)")),
+    cl::desc("Choose the type of path analysis to run (default 'simpleilp')"),
+    cl::values(clEnumValN(PathAnalysisType::SIMPLEILP,  "simpleilp",  "Simple ILP solution"),
+               clEnumValN(PathAnalysisType::GRAPHILP,   "graphilp",   "Graph ILP solution (prediction file)")),
     cl::cat(LLVMTACat));
 
-cl::opt<LpSolverType> LpSolver(
-    "ta-lpsolver",
-    cl::desc("Choose the tool to solve the lp within the path analysis "
-             "(default 'gurobi')"),
+cl::opt<LpSolverType> LpSolver("ta-lpsolver",
+    cl::desc("Choose the tool to solve the lp within the path analysis (default 'gurobi')"),
 #ifdef GUROBIINSTALLED
     cl::init(LpSolverType::GUROBI),
 #else
@@ -527,8 +494,7 @@ cl::opt<LpSolverType> LpSolver(
 #endif
     cl::values(
 #ifdef GUROBIINSTALLED
-        clEnumValN(LpSolverType::GUROBI, "gurobi",
-                   "Commercial Gurobi LP solver"),
+        clEnumValN(LpSolverType::GUROBI, "gurobi", "Commercial Gurobi LP solver"),
 #endif
 #ifdef CPLEXINSTALLED
         clEnumValN(LpSolverType::CPLEX, "cplex", "Commercial CPLEX LP solver"),
@@ -536,19 +502,12 @@ cl::opt<LpSolverType> LpSolver(
         clEnumValN(LpSolverType::LPSOLVE, "lpsolve", "Open-source lp_solve")),
     cl::cat(LLVMTACat));
 
-cl::opt<LpSolverEffortType> LpSolverEffort(
-    "ta-lpsolver-effort",
-    cl::desc("Choose which effort should be taken by the lp solver to reach an "
-             "exact solution (default 'limited')"),
+cl::opt<LpSolverEffortType> LpSolverEffort("ta-lpsolver-effort",
+    cl::desc("Choose which effort should be taken by the lp solver to reach an exact solution (default 'limited')"),
     cl::init(LpSolverEffortType::LIMITED),
-    cl::values(
-        clEnumValN(LpSolverEffortType::MINIMAL, "minimal",
-                   "Solve with default MIPGAP"),
-        clEnumValN(
-            LpSolverEffortType::LIMITED, "limited",
-            "Solve with default MIPGAP first, then try exact with time limit"),
-        clEnumValN(LpSolverEffortType::MAXIMAL, "maximal",
-                   "Solve with MIPGAP of 0.0 without time limit")),
+    cl::values( clEnumValN(LpSolverEffortType::MINIMAL, "minimal", "Solve with default MIPGAP"),
+                clEnumValN(LpSolverEffortType::LIMITED, "limited", "Solve with default MIPGAP first, then try exact with time limit"),
+                clEnumValN(LpSolverEffortType::MAXIMAL, "maximal", "Solve with MIPGAP of 0.0 without time limit")),
     cl::cat(LLVMTACat));
 
 cl::opt<bool> CheckFixPoint("ta-enable-fixpoint-checks", cl::init(false),

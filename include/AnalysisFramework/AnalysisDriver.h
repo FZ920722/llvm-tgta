@@ -27,36 +27,36 @@
 #ifndef ANALYSISDRIVER_H
 #define ANALYSISDRIVER_H
 
+#include <list>
+#include <iostream>
+#include <boost/type_traits.hpp>
+#include <boost/static_assert.hpp>
+
 #include "ARM.h"
 #include "ARMMachineFunctionInfo.h"
-#include "llvm/CodeGen/MachineFunctionPass.h"
-#include "llvm/CodeGen/MachineJumpTableInfo.h"
-#include "llvm/CodeGen/MachineModuleInfo.h"
+
 #include "llvm/IR/Module.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/CodeGen/MachineModuleInfo.h"
+#include "llvm/CodeGen/MachineFunctionPass.h"
+#include "llvm/CodeGen/MachineJumpTableInfo.h"
 
 #include "AnalysisFramework/AnalysisDomain.h"
+#include "AnalysisFramework/PartitioningDomain.h"
 #include "AnalysisFramework/AnalysisInformation.h"
 #include "AnalysisFramework/CollectingContextsDomain.h"
-#include "AnalysisFramework/PartitioningDomain.h"
-#include "LLVMPasses/MachineFunctionCollector.h"
-#include "PartitionUtil/DirectiveHeuristics.h"
 
 #include "Util/Statistics.h"
-
-#include <boost/static_assert.hpp>
-#include <boost/type_traits.hpp>
 #include "Util/GlobalVars.h"
 
-#include <iostream>
-#include <list>
+#include "PartitionUtil/DirectiveHeuristics.h"
+
+#include "LLVMPasses/MachineFunctionCollector.h"
 
 namespace TimingAnalysisPass {
 
 // TODO We want to deal with predicated execution of instruction to allow more
-// fancy optimizations... Each analysis domain gets PredOutcome = {ALWAYS,
-// NEVER, POTENTIALLY} PredOutcome evalPredication(const MachineInstr* ..like
-// transfer..) and do accordingly
+// fancy optimizations... Each analysis domain gets PredOutcome = {ALWAYS, NEVER, POTENTIALLY} PredOutcome evalPredication(const MachineInstr* ..like transfer..) and do accordingly
 
 /**
  * Abstract template class that describes the analysis driver.
@@ -73,19 +73,13 @@ template <class AnalysisDom, typename Granularity> class AnalysisDriver {
    * instantiated for classes inheriting and thereby implementing class
    * ContextAwareAnalysisDomain.
    */
-  BOOST_STATIC_ASSERT(
-      (boost::is_base_of<
-          ContextAwareAnalysisDomain<AnalysisDom, Granularity,
-                                     typename AnalysisDom::AnaDeps>,
-          AnalysisDom>::value));
+  BOOST_STATIC_ASSERT((boost::is_base_of<ContextAwareAnalysisDomain<AnalysisDom, Granularity, typename AnalysisDom::AnaDeps>, AnalysisDom>::value));
 
 public:
   /**
    * Type of analysis information this driver computes.
    */
-  typedef AnalysisInformation<PartitioningDomain<AnalysisDom, Granularity>,
-                              Granularity>
-      AnalysisInfo;
+  typedef AnalysisInformation<PartitioningDomain<AnalysisDom, Granularity>, Granularity> AnalysisInfo;
 
   // Make AnaDeps visible again
   typedef typename AnalysisDom::AnaDeps AnaDeps;
@@ -228,7 +222,7 @@ AnalysisDriverInstr<AnalysisDom>::runAnalysis() {
   DEBUG_WITH_TYPE("driver", dbgs() << "Start new analysis run\n");
   // Initialize analysis information and worklist
   initialize();
-
+  // 长期循环出不来；
   while (!worklist.empty()) {
     // Get a new work item
     auto &bbCtxs = *(worklist.begin()); // Take reference to entry
@@ -240,21 +234,18 @@ AnalysisDriverInstr<AnalysisDom>::runAnalysis() {
     }
     DEBUG_WITH_TYPE("driver", std::cerr << "Work on BB" << currentBB->getNumber() << " of function " << currentBB->getParent()->getName().str() << " in context " << currentCtx << "\n");
 
-    // Compute new incoming information
-    // For function entry blocks, we have information available in func2anainfo
+    // Compute new incoming information. For function entry blocks, we have information available in func2anainfo
     if (currentBB->getNumber() == 0) { //第一个基本块
       assert(currentBB->pred_empty() && "Function entry block cannot have predecessors");
       const auto *currentFunc = currentBB->getParent();
       auto toklist = currentCtx.getTokenList();
-      // Assert that the topmost token in context at beginning of function is
-      // funcallee of this function
+      // Assert that the topmost token in context at beginning of function is funcallee of this function
       assert(!currentCtx.isEmpty() && toklist.back()->getType() == PartitionTokenType::FUNCALLEE);
-      assert(dynamic_cast<PartitionTokenFunCallee *>(toklist.back()) ->getCallee() == currentFunc);
+      assert(dynamic_cast<PartitionTokenFunCallee *>(toklist.back()) -> getCallee() == currentFunc);
       toklist.pop_back();
       Context preCallCtx(toklist);
       AnalysisDom newIn(func2anainfo->at(currentFunc).in.findAnalysisInfo(preCallCtx));
-      // Join (potentially new) incoming information for current basic block and
-      // context
+      // Join (potentially new) incoming information for current basic block and context
       mbb2anainfo->at(currentBB).addContext(currentCtx, newIn);
     }
     analyseMachineBasicBlock(currentBB, currentCtx);
@@ -775,13 +766,10 @@ bool AnalysisDriverInstr<AnalysisDom>::handleBranchInstruction(
 template <class AnalysisDom>
 typename AnalysisDriver<AnalysisDom, MachineInstr>::AnalysisInfo *
 AnalysisDriverInstr<AnalysisDom>::getAnalysisResults() {
-  DEBUG_WITH_TYPE("memusage", dbgs() << AnalysisDom::analysisName("")
-                                     << "finished with " << getPeakRSS()
-                                     << "MB peak mem usage, now dumping\n");
+  DEBUG_WITH_TYPE("memusage", dbgs() << AnalysisDom::analysisName("") << "finished with " << getPeakRSS() << "MB peak mem usage, now dumping\n");
 
   if (AnaInfoPol == AnaInfoPolicy::LOWMEM) {
-    errs() << "[Note:] The low-memory analysis information storage is "
-              "currently not available.\n";
+    errs() << "[Note:] The low-memory analysis information storage is currently not available.\n";
 #if 0
 		typedef AnalysisInformationMemOpt<PartitioningDomain<AnalysisDom, MachineInstr>, MachineInstr>
 						AnaInfoMemOpt;
@@ -795,11 +783,8 @@ AnalysisDriverInstr<AnalysisDom>::getAnalysisResults() {
   }
 
   // Then let us precompute analysis results per instruction
-  assert((AnaInfoPol == AnaInfoPolicy::PRECOMPALL ||
-          AnaInfoPol == AnaInfoPolicy::PRECOMPREQ) &&
-         "Unknown analysis information policy");
-  typedef std::map<const MachineInstr *, PartitionedAnalysisDom>
-      InstrAnainfoMap;
+  assert((AnaInfoPol == AnaInfoPolicy::PRECOMPALL || AnaInfoPol == AnaInfoPolicy::PRECOMPREQ) && "Unknown analysis information policy");
+  typedef std::map<const MachineInstr *, PartitionedAnalysisDom> InstrAnainfoMap;
   std::unique_ptr<InstrAnainfoMap> anaInfoIn(new InstrAnainfoMap());
   std::unique_ptr<InstrAnainfoMap> anaInfoOut(new InstrAnainfoMap());
 
@@ -810,25 +795,20 @@ AnalysisDriverInstr<AnalysisDom>::getAnalysisResults() {
         if (currInstr.isTransient()) {
           continue;
         }
-        if (AnaInfoPol == AnaInfoPolicy::PRECOMPALL ||
-            AnalysisDom::anainfoBeforeRequired(&currInstr)) {
+        if (AnaInfoPol == AnaInfoPolicy::PRECOMPALL || AnalysisDom::anainfoBeforeRequired(&currInstr)) {
           anaInfoIn->insert(std::make_pair(&currInstr, blockIn));
         }
         bool changed = analyseInstruction(&currInstr, blockIn);
-        assert(!changed && "A: Should not change analysis info after iteration "
-                           "while dumping.\n");
-        if (AnaInfoPol == AnaInfoPolicy::PRECOMPALL ||
-            AnalysisDom::anainfoAfterRequired(&currInstr)) {
+        assert(!changed && "A: Should not change analysis info after iteration while dumping.\n");
+        if (AnaInfoPol == AnaInfoPolicy::PRECOMPALL || AnalysisDom::anainfoAfterRequired(&currInstr)) {
           anaInfoOut->insert(std::make_pair(&currInstr, blockIn));
         }
         // Make from the current out-info the next in-info
         changed = handleBranchInstruction(&currInstr, blockIn);
         if (changed) {
           errs() << "\n";
-          errs() << "ERROR: Analysis info changed after fixpoint was already "
-                    "reached\n";
-          errs() << "While joining information of " << currInstr
-                 << "with its target\n";
+          errs() << "ERROR: Analysis info changed after fixpoint was already reached\n";
+          errs() << "While joining information of " << currInstr << "with its target\n";
           errs() << "In " << currInstr.getParent()->getFullName() << "\n";
           errs() << "\n";
           abort();
@@ -836,19 +816,14 @@ AnalysisDriverInstr<AnalysisDom>::getAnalysisResults() {
       }
     }
   }
-  typedef AnalysisInformationPrecomputed<
-      PartitioningDomain<AnalysisDom, MachineInstr>, MachineInstr>
-      AnaInfoPrecomp;
-  auto res = new AnaInfoPrecomp(std::move(anaInfoIn), std::move(anaInfoOut),
-                                this->analysisResults);
+  typedef AnalysisInformationPrecomputed<PartitioningDomain<AnalysisDom, MachineInstr>, MachineInstr> AnaInfoPrecomp;
+  auto res = new AnaInfoPrecomp(std::move(anaInfoIn), std::move(anaInfoOut), this->analysisResults);
 
   // We do not need the internal analysis information any more, reset them
   mbb2anainfo.reset(nullptr);
   func2anainfo.reset(nullptr);
 
-  DEBUG_WITH_TYPE("memusage", dbgs() << AnalysisDom::analysisName("")
-                                     << "finished dumping with " << getPeakRSS()
-                                     << "MB peak mem usage\n");
+  DEBUG_WITH_TYPE("memusage", dbgs() << AnalysisDom::analysisName("") << "finished dumping with " << getPeakRSS() << "MB peak mem usage\n");
   return res;
 }
 
@@ -874,15 +849,8 @@ public:
    * Constructor, calls the superclass constructor
    */
   template <class TailAnaDeps>
-  AnalysisDriverInstrContextMapping(std::string entrypoint,
-                                    TailAnaDeps tAnaDeps)
-      : AnalysisDriverInstr<AnalysisDom>(
-            entrypoint, std::tuple_cat(std::tuple<InstrContextMapping &>(
-                                           *(new InstrContextMapping())),
-                                       tAnaDeps))
-  // Allocate the InstrContext-map on the heap as it is needed even after the
-  // lifetime of the analysis-driver It is freed within the state graph
-  // construction, once the microarchitectural information is no longer needed
+  AnalysisDriverInstrContextMapping(std::string entrypoint, TailAnaDeps tAnaDeps): AnalysisDriverInstr<AnalysisDom>(entrypoint, std::tuple_cat(std::tuple<InstrContextMapping &>(*(new InstrContextMapping())), tAnaDeps))
+  // Allocate the InstrContext-map on the heap as it is needed even after the lifetime of the analysis-driver It is freed within the state graph construction, once the microarchitectural information is no longer needed
   {
     std::tuple<> noDep;
     AnalysisDriverInstr<CollectingContextsDomain> collectCtxsAna(
@@ -898,11 +866,8 @@ public:
           if (currInstr.isCall()) {
             auto ctxTree = ccAnaInfo->getAnaInfoBefore(&currInstr);
             // Directives before the call instruction
-            if (DirectiveHeuristicsPassInstance->hasDirectiveBeforeInstr(
-                    &currInstr)) {
-              ctxTree.updateContexts(
-                  DirectiveHeuristicsPassInstance->getDirectiveBeforeInstr(
-                      &currInstr));
+            if (DirectiveHeuristicsPassInstance->hasDirectiveBeforeInstr(&currInstr)) {
+              ctxTree.updateContexts(DirectiveHeuristicsPassInstance->getDirectiveBeforeInstr(&currInstr));
             }
             if (!ctxTree.isBottom()) {
               // We must put the contexts for each callsite in an ordered way
