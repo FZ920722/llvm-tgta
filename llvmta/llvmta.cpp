@@ -73,6 +73,35 @@ using namespace llvm;
 static codegen::RegisterCodeGenFlags CGF;
 
 // General options for llc.  Other pass-specific options are specified within the corresponding llc passes, and target-specific options and back-end code generation options are specified with the target machine.
+// static cl::opt<bool> TimeTrace("time-trace",
+//   cl::desc("Record time trace"));
+// static cl::opt<unsigned> TimeTraceGranularity("time-trace-granularity",
+//   cl::Hidden,
+//   cl::init(500),
+//   cl::desc("Minimum time granularity (in microseconds) traced by time profiler"));
+// static cl::opt<std::string> TimeTraceFile("time-trace-file",
+//   cl::desc("Specify time trace file destination"),
+//   cl::value_desc("filename"));
+// static cl::opt<bool> RemarksWithHotness("pass-remarks-with-hotness",
+//   cl::Hidden,
+//   cl::desc("With PGO, include profile count in optimization remarks"));
+// static cl::opt<std::string> RemarksPasses("pass-remarks-filter",
+//   cl::desc("Only record optimization remarks from passes whose names match the given regular expression"),
+//   cl::value_desc("regex"));
+// static cl::opt<std::string> RemarksFormat("pass-remarks-format",
+//   cl::init("yaml"),
+//   cl::desc("The format used for serializing remarks (default: YAML)"),
+//   cl::value_desc("format"));
+// static cl::opt<std::string> RemarksFilename("pass-remarks-output",
+//   cl::desc("Output filename for pass remarks"),
+//   cl::value_desc("filename"));
+// static cl::opt<Optional<uint64_t>, false, remarks::HotnessThresholdParser> RemarksHotnessThreshold("pass-remarks-hotness-threshold",
+//   cl::Hidden,
+//   cl::init(0),
+//   cl::desc("Minimum profile count required for an optimization remark to be output. Use 'auto' to apply the threshold from profile summary."),
+//   cl::value_desc("N or 'auto'"));
+
+
 static cl::opt<std::string> InputFilename(
   cl::Positional,
   cl::init("-"),
@@ -94,18 +123,6 @@ static cl::opt<unsigned> TimeCompilations("time-compilations",
   cl::init(1u),
   cl::value_desc("N"),
   cl::desc("Repeat compilation N times for timing"));
-
-static cl::opt<bool> TimeTrace("time-trace",
-  cl::desc("Record time trace"));
-
-static cl::opt<unsigned> TimeTraceGranularity("time-trace-granularity",
-  cl::Hidden,
-  cl::init(500),
-  cl::desc("Minimum time granularity (in microseconds) traced by time profiler"));
-
-static cl::opt<std::string> TimeTraceFile("time-trace-file",
-  cl::desc("Specify time trace file destination"),
-  cl::value_desc("filename"));
 
 static cl::opt<std::string> BinutilsVersion("binutils-version",
   cl::Hidden,
@@ -165,28 +182,6 @@ static cl::opt<bool> DiscardValueNames("discard-value-names",
 static cl::list<std::string> IncludeDirs("I",
   cl::desc("include search path"));
 
-static cl::opt<bool> RemarksWithHotness("pass-remarks-with-hotness",
-  cl::Hidden,
-  cl::desc("With PGO, include profile count in optimization remarks"));
-
-static cl::opt<Optional<uint64_t>, false, remarks::HotnessThresholdParser> RemarksHotnessThreshold("pass-remarks-hotness-threshold",
-  cl::Hidden,
-  cl::init(0),
-  cl::desc("Minimum profile count required for an optimization remark to be output. Use 'auto' to apply the threshold from profile summary."),
-  cl::value_desc("N or 'auto'"));
-
-static cl::opt<std::string> RemarksFilename("pass-remarks-output",
-  cl::desc("Output filename for pass remarks"),
-  cl::value_desc("filename"));
-
-static cl::opt<std::string> RemarksPasses("pass-remarks-filter",
-  cl::desc("Only record optimization remarks from passes whose names match the given regular expression"),
-  cl::value_desc("regex"));
-
-static cl::opt<std::string> RemarksFormat("pass-remarks-format",
-  cl::init("yaml"),
-  cl::desc("The format used for serializing remarks (default: YAML)"),
-  cl::value_desc("format"));
 
 namespace {
   static ManagedStatic<std::vector<std::string>> RunPassNames;
@@ -395,11 +390,11 @@ int main(int argc, char **argv) {
   bool HasError = false;
   Context.setDiagnosticHandler(std::make_unique<LLCDiagnosticHandler>(&HasError));
 
-  Expected<std::unique_ptr<ToolOutputFile>> RemarksFileOrErr = setupLLVMOptimizationRemarks(Context, RemarksFilename, RemarksPasses, RemarksFormat, RemarksWithHotness, RemarksHotnessThreshold);
+  // Expected<std::unique_ptr<ToolOutputFile>> RemarksFileOrErr = setupLLVMOptimizationRemarks(Context, RemarksFilename, RemarksPasses, RemarksFormat, RemarksWithHotness, RemarksHotnessThreshold);
 
-  if (Error E = RemarksFileOrErr.takeError())
-    reportError(std::move(E), RemarksFilename);
-  std::unique_ptr<ToolOutputFile> RemarksFile = std::move(*RemarksFileOrErr);
+  // if (Error E = RemarksFileOrErr.takeError())
+  //   reportError(std::move(E), RemarksFilename);
+  // std::unique_ptr<ToolOutputFile> RemarksFile = std::move(*RemarksFileOrErr);
 
   if (InputLanguage != "" && InputLanguage != "ir" && InputLanguage != "mir")
     reportError("input language must be '', 'IR' or 'MIR'");
@@ -409,9 +404,9 @@ int main(int argc, char **argv) {
     if (int RetVal = compileModule(argv, Context))
       return RetVal;
 
-  if (RemarksFile)
-    RemarksFile->keep();
-  return 0;
+  // if (RemarksFile)
+  //   RemarksFile->keep();
+  // return 0;
 }
 
 static bool addPass(PassManagerBase &PM, const char *argv0, StringRef PassName, TargetPassConfig &TPC) {

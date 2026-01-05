@@ -114,7 +114,7 @@ if __name__ == "__main__":
     if os.system(f"./tools/configure.sh -l {args.platform}") != 0:
         exit(1)
 
-    if os.system(f"bear -- make -j{CPU_COUNT}") != 0:
+    if os.system(f"bear make -j{CPU_COUNT}") != 0:
         exit(1)
 
 

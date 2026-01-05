@@ -1,7 +1,7 @@
 
-#building out of llvm sources  is not possible, see:
-#https://lists.llvm.org/pipermail/llvm-dev/2019-March/130706.html
-message (STATUS "Found tool llvm-tgta")
+# building out of llvm sources  is not possible, see:
+# https://lists.llvm.org/pipermail/llvm-dev/2019-March/130706.html
+# message (STATUS "Found tool llvmta")
 
 project("TimingAnalysis")
 
@@ -24,9 +24,8 @@ set(LLVM_LINK_COMPONENTS
   Vectorize
   )
 
-message (STATUS "${PROJECT_BINARY_DIR}$")
-
-message (STATUS "${PROJECT_SOURCE_DIR}$")
+# message (STATUS "${PROJECT_BINARY_DIR}$")
+# message (STATUS "${PROJECT_SOURCE_DIR}$")
 
 include_directories(include ${LLVM_BINARY_DIR}/lib/Target/ARM ${LLVM_SOURCE_DIR}/lib/Target/ARM ${LLVM_BINARY_DIR}/lib/Target/RISCV ${LLVM_SOURCE_DIR}/lib/Target/RISCV)
 
