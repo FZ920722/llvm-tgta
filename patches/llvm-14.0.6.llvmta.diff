@@ -1,5 +1,5 @@
 diff --git a/llvm/CMakeLists.txt b/llvm/CMakeLists.txt
-index 2da05ef870b9..b4b5f8e966de 100644
+index 2da05ef87..b4b5f8e96 100644
 --- a/llvm/CMakeLists.txt
 +++ b/llvm/CMakeLists.txt
 @@ -1241,22 +1241,6 @@ if (MSVC AND CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows" AND CMAKE_INSTALL_UCRT_LI
@@ -26,7 +26,7 @@ index 2da05ef870b9..b4b5f8e966de 100644
  if (LLVM_INCLUDE_UTILS AND LLVM_INCLUDE_TOOLS)
    add_subdirectory(utils/llvm-locstats)
 diff --git a/llvm/include/llvm/Analysis/LoopInfo.h b/llvm/include/llvm/Analysis/LoopInfo.h
-index a0ffdb07a7ec..82575f16c246 100644
+index a0ffdb07a..82575f16c 100644
 --- a/llvm/include/llvm/Analysis/LoopInfo.h
 +++ b/llvm/include/llvm/Analysis/LoopInfo.h
 @@ -925,11 +925,11 @@ public:
@@ -46,7 +46,7 @@ index a0ffdb07a7ec..82575f16c246 100644
    template <typename... ArgsTy> LoopT *AllocateLoop(ArgsTy &&... Args) {
      LoopT *Storage = LoopAllocator.Allocate<LoopT>();
 diff --git a/llvm/include/llvm/Analysis/ScalarEvolution.h b/llvm/include/llvm/Analysis/ScalarEvolution.h
-index b16aa7017719..abed608f15d8 100644
+index b16aa7017..abed608f1 100644
 --- a/llvm/include/llvm/Analysis/ScalarEvolution.h
 +++ b/llvm/include/llvm/Analysis/ScalarEvolution.h
 @@ -140,7 +140,7 @@ public:
@@ -59,7 +59,7 @@ index b16aa7017719..abed608f15d8 100644
  
    SCEVTypes getSCEVType() const { return SCEVType; }
 diff --git a/llvm/include/llvm/Analysis/ScalarEvolutionExpressions.h b/llvm/include/llvm/Analysis/ScalarEvolutionExpressions.h
-index cd8e5fab6766..7baa90bac927 100644
+index cd8e5fab6..7baa90bac 100644
 --- a/llvm/include/llvm/Analysis/ScalarEvolutionExpressions.h
 +++ b/llvm/include/llvm/Analysis/ScalarEvolutionExpressions.h
 @@ -589,6 +589,10 @@ class SCEVUnknown final : public SCEV, private CallbackVH {
@@ -74,7 +74,7 @@ index cd8e5fab6766..7baa90bac927 100644
  
    /// @{
 diff --git a/llvm/lib/Analysis/ScalarEvolution.cpp b/llvm/lib/Analysis/ScalarEvolution.cpp
-index 977fc0911355..2657d3e44c8a 100644
+index 977fc0911..2657d3e44 100644
 --- a/llvm/lib/Analysis/ScalarEvolution.cpp
 +++ b/llvm/lib/Analysis/ScalarEvolution.cpp
 @@ -508,6 +508,13 @@ SCEVSignExtendExpr::SCEVSignExtendExpr(const FoldingSetNodeIDRef ID,
@@ -100,7 +100,7 @@ index 977fc0911355..2657d3e44c8a 100644
        F, getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(F),
        getAnalysis<AssumptionCacheTracker>().getAssumptionCache(F),
 diff --git a/llvm/lib/CodeGen/MachineModuleInfo.cpp b/llvm/lib/CodeGen/MachineModuleInfo.cpp
-index 31d4fc7d02bf..ce03b3199b9f 100644
+index 31d4fc7d0..ce03b3199 100644
 --- a/llvm/lib/CodeGen/MachineModuleInfo.cpp
 +++ b/llvm/lib/CodeGen/MachineModuleInfo.cpp
 @@ -313,7 +313,7 @@ MachineFunction &MachineModuleInfo::getOrCreateMachineFunction(Function &F) {
@@ -113,10 +113,10 @@ index 31d4fc7d02bf..ce03b3199b9f 100644
    LastResult = nullptr;
  }
 diff --git a/llvm/lib/Transforms/Utils/HelloWorld.cpp b/llvm/lib/Transforms/Utils/HelloWorld.cpp
-index 7019e9e4451b..1cd55cda03a7 100644
+index 7019e9e44..3e27d992a 100644
 --- a/llvm/lib/Transforms/Utils/HelloWorld.cpp
 +++ b/llvm/lib/Transforms/Utils/HelloWorld.cpp
-@@ -7,11 +7,73 @@
+@@ -7,11 +7,85 @@
  //===----------------------------------------------------------------------===//
  
  #include "llvm/Transforms/Utils/HelloWorld.h"
@@ -156,6 +156,18 @@ index 7019e9e4451b..1cd55cda03a7 100644
 +    for (auto &I : BB) {
 +      if (auto *CI = dyn_cast<CallInst>(&I)) {
 +        if (CI->isInlineAsm()) {
++          F.deleteBody();
++          return PreservedAnalyses::none();
++        }
++      }
++    }
++  }
++
++  // (NEW) 删除包含 cmpxchg weak 的函数
++  for (auto &BB : F) {
++    for (auto &I : BB) {
++      if (auto *CX = dyn_cast<AtomicCmpXchgInst>(&I)) {
++        if (CX->isWeak()) {
 +          F.deleteBody();
 +          return PreservedAnalyses::none();
 +        }
