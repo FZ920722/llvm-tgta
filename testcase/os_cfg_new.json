@@ -1,0 +1,16 @@
+{
+  "Tasks": [
+    {
+      "TaskName": "hello_main",
+      "TaskPriority": 200,
+      "TaskID": 0,
+      "Period": 5
+    },
+    {
+      "TaskName": "ostest_main",
+      "TaskPriority": 198,
+      "TaskID": 1,
+      "Period": 10
+    }
+  ]
+}

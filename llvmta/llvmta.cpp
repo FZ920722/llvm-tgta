@@ -50,10 +50,11 @@ static codegen::RegisterCodeGenFlags CGF;
 static cl::opt<std::string> InputFilename(
   cl::Positional,
   cl::init("-"),
-  cl::desc("<input bitcode>"));
+  cl::desc("input ir"));
 
 static cl::opt<char> OptLevel("O",
-  cl::Prefix, cl::ZeroOrMore,
+  cl::Prefix,
+  cl::ZeroOrMore,
   cl::init(' '),
   cl::desc("Determine optimization level. [-O0, -O1, -O2, or -O3] (default = '-O2')"));
 
@@ -72,48 +73,44 @@ namespace {
   };
 } // namespace
 
-static RunPassOption RunPassOpt;
+struct LLCDiagnosticHandler : public DiagnosticHandler {
+  bool *HasError;
+  LLCDiagnosticHandler(bool *HasErrorPtr) : HasError(HasErrorPtr) {}
+  bool handleDiagnostics(const DiagnosticInfo &DI) override {
+    if (DI.getKind() == llvm::DK_SrcMgr) {
+      const auto &DISM = cast<DiagnosticInfoSrcMgr>(DI);
+      const SMDiagnostic &SMD = DISM.getSMDiag();
 
-static cl::opt<RunPassOption, true, cl::parser<std::string>> RunPass("run-pass",
-    cl::desc("Run compiler only for specified passes (comma separated list)"),
-    cl::value_desc("pass-name"), cl::ZeroOrMore, cl::location(RunPassOpt));
-
-  struct LLCDiagnosticHandler : public DiagnosticHandler {
-    bool *HasError;
-    LLCDiagnosticHandler(bool *HasErrorPtr) : HasError(HasErrorPtr) {}
-    bool handleDiagnostics(const DiagnosticInfo &DI) override {
-      if (DI.getKind() == llvm::DK_SrcMgr) {
-        const auto &DISM = cast<DiagnosticInfoSrcMgr>(DI);
-        const SMDiagnostic &SMD = DISM.getSMDiag();
-
-        if (SMD.getKind() == SourceMgr::DK_Error)
-          *HasError = true;
-
-        SMD.print(nullptr, errs());
-
-        // For testing purposes, we print the LocCookie here.
-        if (DISM.isInlineAsmDiag() && DISM.getLocCookie())
-          WithColor::note() << "!srcloc = " << DISM.getLocCookie() << "\n";
-
-        return true;
-      }
-
-      if (DI.getSeverity() == DS_Error)
+      if (SMD.getKind() == SourceMgr::DK_Error)
         *HasError = true;
 
-      if (auto *Remark = dyn_cast<DiagnosticInfoOptimizationBase>(&DI))
-        if (!Remark->isEnabled())
-          return true;
+      SMD.print(nullptr, errs());
 
-      DiagnosticPrinterRawOStream DP(errs());
-      errs() << LLVMContext::getDiagnosticMessagePrefix(DI.getSeverity()) << ": ";
-      DI.print(DP);
-      errs() << "\n";
+      // For testing purposes, we print the LocCookie here.
+      if (DISM.isInlineAsmDiag() && DISM.getLocCookie())
+        WithColor::note() << "!srcloc = " << DISM.getLocCookie() << "\n";
+
       return true;
     }
-  };
 
-  static int compileModule(char **, LLVMContext &);
+    if (DI.getSeverity() == DS_Error)
+      *HasError = true;
+
+    if (auto *Remark = dyn_cast<DiagnosticInfoOptimizationBase>(&DI))
+      if (!Remark->isEnabled())
+        return true;
+
+    DiagnosticPrinterRawOStream DP(errs());
+    errs() << LLVMContext::getDiagnosticMessagePrefix(DI.getSeverity()) << ": ";
+    DI.print(DP);
+    errs() << "\n";
+    return true;
+  }
+};
+
+static int compileModule(char **, LLVMContext &);
+
+static bool addPass(PassManagerBase &, const char *, StringRef, TargetPassConfig &);
 
 // main - Entry point
 int main(int argc, char **argv) {
@@ -167,42 +164,15 @@ int main(int argc, char **argv) {
   return 0;
 }
 
-static bool addPass(PassManagerBase &PM, const char *argv0, StringRef PassName, TargetPassConfig &TPC) {
-  if (PassName == "none")
-    return false;
-
-  const PassRegistry *PR = PassRegistry::getPassRegistry();
-  const PassInfo *PI = PR->getPassInfo(PassName);
-  if (!PI) {
-    WithColor::error(errs(), argv0) << "run-pass " << PassName << " is not registered.\n";
-    return true;
-  }
-
-  Pass *P;
-  if (PI->getNormalCtor())
-    P = PI->getNormalCtor()();
-  else {
-    WithColor::error(errs(), argv0) << "cannot create pass: " << PI->getPassName() << "\n";
-    return true;
-  }
-  std::string Banner = std::string("After ") + std::string(P->getPassName());
-  TPC.addMachinePrePasses();
-  PM.add(P);
-  TPC.addMachinePostPasses(Banner);
-
-  return false;
-}
-
 static int compileModule(char **argv, LLVMContext &Context) {
-  // Load the module to be compiled...
+  // Load the module to be compiled.
   Triple TheTriple;
   SMDiagnostic Err;
   std::unique_ptr<Module> M;
 
-  std::string CPUStr = codegen::getCPUStr(), FeaturesStr = codegen::getFeaturesStr();
-
+  // -mattr
   auto MAttrs = codegen::getMAttrs();
-  // bool SkipModule = codegen::getMCPU() == "help" || (!MAttrs.empty() && MAttrs.front() == "help");
+  std::string CPUStr = codegen::getCPUStr(), FeaturesStr = codegen::getFeaturesStr();
 
   CodeGenOpt::Level OLvl = CodeGenOpt::Default;
   switch (OptLevel) {
@@ -234,7 +204,7 @@ static int compileModule(char **argv, LLVMContext &Context) {
     Options.MCOptions.MCUseDwarfDirectory = true;
     Options.MCOptions.AsmVerbose = true;
     Options.MCOptions.PreserveAsmComments = true;
-    Options.MCOptions.SplitDwarfFile = "";
+    // Options.MCOptions.SplitDwarfFile = "";
   };
 
   Optional<Reloc::Model> RM = codegen::getExplicitRelocModel();
@@ -270,8 +240,8 @@ static int compileModule(char **argv, LLVMContext &Context) {
     Err.print(argv[0], WithColor::error(errs(), argv[0]));
     return 1;
   }
-
   assert(M && "Should have exited if we didn't have a module!");
+
   if (codegen::getFloatABIForCalls() != FloatABI::Default)
     Options.FloatABIType = codegen::getFloatABIForCalls();
 
@@ -281,11 +251,13 @@ static int compileModule(char **argv, LLVMContext &Context) {
   std::error_code EC;
   sys::fs::OpenFlags OpenFlags = sys::fs::OF_None;
   std::unique_ptr<ToolOutputFile> Out = std::make_unique<ToolOutputFile>(std::string(IFN.drop_back(3)) + ".s", EC, OpenFlags);
+
   if (EC)
     return -1;
 
   if (!Out)
     return 1;
+
   // Ensure the filename is passed down to CodeViewDebug.
   Target->Options.ObjectFilenameForDebug = Out->outputFilename();
 
@@ -359,9 +331,36 @@ static int compileModule(char **argv, LLVMContext &Context) {
     if (*HasError)
       return 1;
   }
+
   // Declare success.
   Out->keep();
   if (DwoOut)
     DwoOut->keep();
   return 0;
+}
+
+static bool addPass(PassManagerBase &PM, const char *argv0, StringRef PassName, TargetPassConfig &TPC) {
+  if (PassName == "none")
+    return false;
+
+  const PassRegistry *PR = PassRegistry::getPassRegistry();
+  const PassInfo *PI = PR->getPassInfo(PassName);
+  if (!PI) {
+    WithColor::error(errs(), argv0) << "run-pass " << PassName << " is not registered.\n";
+    return true;
+  }
+
+  Pass *P;
+  if (PI->getNormalCtor())
+    P = PI->getNormalCtor()();
+  else {
+    WithColor::error(errs(), argv0) << "cannot create pass: " << PI->getPassName() << "\n";
+    return true;
+  }
+  std::string Banner = std::string("After ") + std::string(P->getPassName());
+  TPC.addMachinePrePasses();
+  PM.add(P);
+  TPC.addMachinePostPasses(Banner);
+
+  return false;
 }

@@ -13,8 +13,33 @@
             "args":[
                 "-s", "/publicfs10/fs10-m9/home/m9s003470/work-space",
                 "-n", "/publicfs10/fs10-m9/home/m9s003470/nuttxspace/nuttx",
-                //"-e", "/home/fyj/DiskN/nuttxspace/nuttx",
                 "-p", "qemu-armv7a:nsh"
+            ]
+        },
+        {
+            "name": "Python Debugger: 1_Preprocess",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/publicfs10/fs10-m9/home/m9s003470/llvm-project/llvm/tools/llvm-tgta/testcase/1_Preprocess.py",
+            "console": "integratedTerminal",
+            "args":[
+                "-s", "/publicfs10/fs10-m9/home/m9s003470/work-space/_IRFile",
+                "-n", "/publicfs10/fs10-m9/home/m9s003470/nuttxspace/nuttx",
+                "-p", "qemu-armv7a:nsh"
+            ]
+        },
+        {
+            "name": "Python Debugger: 2_Analysis",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/publicfs10/fs10-m9/home/m9s003470/llvm-project/llvm/tools/llvm-tgta/testcase/2_Analysis.py",
+            "console": "integratedTerminal",
+            "args":[
+                "-s", "/publicfs10/fs10-m9/home/m9s003470/work-space/_OFile",
+                "-e", "/publicfs10/fs10-m9/home/m9s003470/llvm-project/llvm/tools/llvm-tgta/testcase/os_cfg_new.json",
+                "-ml", "100",
+                "-mf", "100",
+                "-ir", "/publicfs10/fs10-m9/home/m9s003470/work-space/_IRFile/new_optimized.ll"
             ]
         }
     ]
