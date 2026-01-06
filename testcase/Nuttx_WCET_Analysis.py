@@ -43,7 +43,7 @@ def IRCompile(_param):
 
 
 if __name__ == "__main__":
-    global CPU_COUNT, SPACE_PATH, NUTTX_PATH, ENTRYS_PATH, IRFILE_PATH, OPFILE_PATH, LLVMTA_SOURCE, IR_TARGET_PATH
+    global CPU_COUNT, SPACE_PATH, NUTTX_PATH, ENTRY_POINT, MAX_EXTFUNC_WCET, IRFILE_PATH, OPFILE_PATH, LLVMTA_SOURCE, IR_TARGET_PATH
 
     CPU_COUNT =  os.cpu_count()
     LLVMTA_SOURCE = [
@@ -87,19 +87,26 @@ if __name__ == "__main__":
     parser = ArgumentParser(description='llvm-ta to nuttx')
     parser.add_argument('-s', '--space',   type=str,   help='The address of work space')
     parser.add_argument('-n', '--nuttx',   type=str,   help='The address of nuttx project')
-    parser.add_argument('-e', '--entrys',   type=str,   help='The entry points list file path')
-    parser.add_argument('-p', '--platform',   type=str,   help='The compile target of platform')
     # - fvp-armv8r:nsh
     # - qemu-armv8a:nsh
     # - qemu-armv7a:nsh
     # - qemu-armv7r:nsh
     # - fvp-armv8r-aarch32:nsh
+    parser.add_argument('-p', '--platform',   type=str,   help='The compile target of platform')
+
+    # (1) 入口函数； "hello_main"
+    parser.add_argument('-e', '--entry',   type=str,   help='The entry point')
+
+    # (2) WCET上限；
+    parser.add_argument('-b', '--bound',   type=int,   help='The compile target of platform')
+
 
     args = parser.parse_args()
+    MAX_BOUND = args.bound
     SPACE_PATH = args.space
     NUTTX_PATH = args.nuttx
-    ENTRYS_PATH = args.entrys
-
+    ENTRY_POINT = args.entry
+    MAX_EXTFUNC_WCET = args.bound
 
     print(f"================= STEP 1 Compile =================")
     IRFILE_PATH= os.path.join(SPACE_PATH, "_IRFile")
@@ -164,52 +171,52 @@ if __name__ == "__main__":
 
     os.chdir(OPFILE_PATH)
 
-    for _entry_point in ["hello_main",]:
-        # print(f"================= Analyzing {_entry_point} =================")
-        entry_work_space = os.path.join(OPFILE_PATH, _entry_point)
-        if os.path.exists(entry_work_space):
-            shutil.rmtree(entry_work_space)
-        os.mkdir(entry_work_space)
-        os.chdir(entry_work_space)
+    # print(f"================= Analyzing {ENTRY_POINT} =================")
+    entry_work_space = os.path.join(OPFILE_PATH, ENTRY_POINT)
+    if os.path.exists(entry_work_space):
+        shutil.rmtree(entry_work_space)
+    os.mkdir(entry_work_space)
+    os.chdir(entry_work_space)
 
-        print(f"S3.1 Construct CoreInfo.json")
-        core_info_path =  os.path.join(entry_work_space, "CoreInfo.json")
-        with open(core_info_path, 'w', encoding='utf-8') as f:
-            json.dump([{"core": 0,  "tasks": [{"function": _entry_point}]}], f, indent=4, ensure_ascii=False)
+    print(f"S3.1 Construct CoreInfo.json")
+    core_info_path =  os.path.join(entry_work_space, "CoreInfo.json")
+    with open(core_info_path, 'w', encoding='utf-8') as f:
+        json.dump([{"core": 0,  "tasks": [{"function": ENTRY_POINT}]}], f, indent=4, ensure_ascii=False)
 
-        print(f"S3.2 Extfuncs Generate")
-        if os.system(' '.join(LLVMTA_SOURCE + ["--ta-output-unknown-extfuncs",
-                                               f"--core-info={core_info_path}",
-                                               f"--ta-analysis-entry-point={_entry_point}",
-                                               IR_TARGET_PATH])) != 0:
-            exit(1)
+    print(f"S3.2 Extfuncs Generate")
+    if os.system(' '.join(LLVMTA_SOURCE + ["--ta-output-unknown-extfuncs",
+                                          f"--core-info={core_info_path}",
+                                          f"--ta-analysis-entry-point={ENTRY_POINT}",
+                                          IR_TARGET_PATH])) != 0:
+        exit(1)
 
-        if os.path.getsize('ExtFuncAnnotations.csv') > 0:
-            df = pd.read_csv('ExtFuncAnnotations.csv', header=None)
-            for index, row in df.iterrows():
-                row[0] = row[0].replace("<start address>", "1")
-                row[0] = row[0].replace("<max cycles/accesses/hits/misses>", "1/1/1/1")
-            df.to_csv('ExtFuncAnnotations.csv', index=False, header=0)
+    if os.path.getsize('ExtFuncAnnotations.csv') > 0:
+        df = pd.read_csv('ExtFuncAnnotations.csv', header=None)
+        for index, row in df.iterrows():
+            row[0] = row[0].replace("<start address>", "1")
+            row[0] = row[0].replace("<max cycles/accesses/hits/misses>", f"{MAX_EXTFUNC_WCET}/1/1/1")
+        df.to_csv('ExtFuncAnnotations.csv', index=False, header=0)
 
-        print(f"S3.3 LoopsBound Generate")
-        if os.system(' '.join(LLVMTA_SOURCE + ["--ta-output-unknown-loops",
-                                               f"--core-info={core_info_path}",
-                                               f"--ta-analysis-entry-point={_entry_point}",
-                                               IR_TARGET_PATH])) != 0:
-            exit(1)
-        if os.path.getsize('LoopAnnotations.csv') > 0:
-            df = pd.read_csv('LoopAnnotations.csv', header=None)
-            for index, row in df.iterrows():
-                row[0] = row[0].replace("|-1", "|1")
-            df.to_csv('LoopAnnotations.csv', index=False, header=0)
-        shutil.copy("LoopAnnotations.csv", "LLoopAnnotations.csv")
+    print(f"S3.3 LoopsBound Generate")
+    if os.system(' '.join(LLVMTA_SOURCE + ["--ta-output-unknown-loops",
+                                          f"--core-info={core_info_path}",
+                                          f"--ta-analysis-entry-point={ENTRY_POINT}",
+                                            IR_TARGET_PATH])) != 0:
+        exit(1)
 
-        print(f"S3.4 WCET Analyze")
-        if os.system(' '.join(LLVMTA_SOURCE + [f"--core-info={core_info_path}",
-                                               f"--ta-analysis-entry-point={_entry_point}",
-                                                "--ta-restart-after-external",
-                                                "--ta-loop-bounds-file=LoopAnnotations.csv",
-                                                "--ta-loop-lowerbounds-file=LLoopAnnotations.csv",
-                                                "--ta-extfunc-annotation-file=ExtFuncAnnotations.csv",
-                                                IR_TARGET_PATH])) != 0:
-            exit(1)
+    if os.path.getsize('LoopAnnotations.csv') > 0:
+        df = pd.read_csv('LoopAnnotations.csv', header=None)
+        for index, row in df.iterrows():
+            row[0] = row[0].replace("|-1", "|1")
+        df.to_csv('LoopAnnotations.csv', index=False, header=0)
+    shutil.copy("LoopAnnotations.csv", "LLoopAnnotations.csv")
+
+    print(f"S3.4 WCET Analyze")
+    if os.system(' '.join(LLVMTA_SOURCE + [f"--core-info={core_info_path}",
+                                           f"--ta-analysis-entry-point={ENTRY_POINT}",
+                                            "--ta-restart-after-external",
+                                            "--ta-loop-bounds-file=LoopAnnotations.csv",
+                                            "--ta-loop-lowerbounds-file=LLoopAnnotations.csv",
+                                            "--ta-extfunc-annotation-file=ExtFuncAnnotations.csv",
+                                            IR_TARGET_PATH])) != 0:
+        exit(1)
