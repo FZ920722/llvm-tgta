@@ -1,4 +1,3 @@
-
 # building out of llvm sources  is not possible, see:
 # https://lists.llvm.org/pipermail/llvm-dev/2019-March/130706.html
 # message (STATUS "Found tool llvmta")
